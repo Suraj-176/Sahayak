@@ -1,6 +1,10 @@
 // Vercel Serverless Function: api/chat.js
 // Secure server-side multi-provider AI proxy with key rotation & auto-failover
 
+export const config = {
+  regions: ['bom1'] // Deploy in Mumbai, India data center for fastest Indian citizen access
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
