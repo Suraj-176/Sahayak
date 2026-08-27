@@ -131,8 +131,22 @@
     .delete-chat-btn:hover{color:#E53935; opacity:1; background:rgba(229,57,53,0.1);}
     .recent-item:hover .delete-chat-btn{display:flex;}
 
-    .sidebar-footer{margin-top:auto; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;}
-    .sidebar-disclaimer{font-size:10.5px; color:var(--muted); line-height:1.5; text-align:center;}
+    .sidebar-footer{margin-top:auto; padding-top:12px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;}
+    .sidebar-powered{
+      font-size:11px; font-weight:600; color:var(--ink); text-align:center;
+      display:flex; align-items:center; justify-content:center; gap:5px;
+      padding:5px 8px; border-radius:6px; background:var(--surface-soft);
+      border:1px solid var(--border); letter-spacing:0.2px;
+    }
+    .sidebar-powered strong{color:var(--chakra); font-weight:800;}
+    .sidebar-disclaimer{font-size:10px; color:var(--muted); line-height:1.4; text-align:center;}
+
+    .powered-badge{
+      display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600;
+      color:var(--muted); background:var(--surface-soft); border:1px solid var(--border);
+      padding:4px 12px; border-radius:999px; margin-bottom:14px;
+    }
+    .powered-badge strong{color:var(--ink); font-weight:700;}
 
     /* ---------- Main ---------- */
     .main{flex:1; display:flex; flex-direction:column; min-width:0; z-index:1; position:relative; height:100%; overflow:hidden;}
@@ -1710,7 +1724,7 @@ Welcome! To activate the AI response engine, please configure your free API keys
           <div className="brand-mark"><Icon.flag s={18}/></div>
           <div>
             <div className="brand-name">{currentLangText.appTitle}</div>
-            <div className="brand-sub">{currentLangText.appSubtitle}</div>
+            <div className="brand-sub">Civic AI • Powered by Suraj Yadav</div>
           </div>
         </div>
 
@@ -1755,6 +1769,9 @@ Welcome! To activate the AI response engine, please configure your free API keys
         </div>
 
         <div className="sidebar-footer">
+          <div className="sidebar-powered">
+            <span>⚡</span> Powered by <strong>Suraj Yadav</strong>
+          </div>
           <div className="sidebar-disclaimer">{currentLangText.disclaimer}</div>
         </div>
       </div>
@@ -1946,6 +1963,9 @@ Welcome! To activate the AI response engine, please configure your free API keys
                   <div className="empty-icon"><Icon.sparkle s={26}/></div>
                   <h2>{currentLangText.emptyHeading}</h2>
                   <p>{currentLangText.emptySub} State: <strong>{activeStateObj.name}</strong></p>
+                  <div className="powered-badge">
+                    <Icon.sparkle s={12}/> Engineered &amp; Powered by <strong>Suraj Yadav</strong>
+                  </div>
                   <div className="suggestion-grid">
                     <div className="suggestion-card" onClick={()=>sendText(`I am a farmer in ${activeStateObj.name}, what central and state subsidies can I get?`)}>
                       <span className="suggestion-tag scheme">Welfare</span>
