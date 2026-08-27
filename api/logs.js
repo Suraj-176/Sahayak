@@ -1,5 +1,9 @@
-﻿// Vercel Serverless Endpoint: api/logs.js
+// Vercel Serverless Endpoint: api/logs.js
 // Export captured visitor data as downloadable CSV (Excel) or JSON
+
+export const config = {
+  regions: ['bom1']
+};
 
 export default async function handler(req, res) {
   // Ensure global log store exists
@@ -14,7 +18,7 @@ export default async function handler(req, res) {
     const escapeCsv = (str) => {
       if (str === null || str === undefined) return '""';
       const clean = String(str).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ');
-      return "";
+      return '"' + clean + '"';
     };
 
     const rows = global.SESSION_LOGS.map(log => [
@@ -32,13 +36,13 @@ export default async function handler(req, res) {
     const csvContent = [headers.join(','), ...rows].join('\n');
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', ttachment; filename="sahayak_user_activity_.csv");
+    res.setHeader('Content-Disposition', 'attachment; filename="sahayak_user_activity.csv"');
     return res.status(200).send(csvContent);
   }
 
   // Otherwise return formatted JSON
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Content-Disposition', ttachment; filename="sahayak_user_activity_.json");
+  res.setHeader('Content-Disposition', 'attachment; filename="sahayak_user_activity.json"');
   return res.status(200).json({
     totalEntries: global.SESSION_LOGS.length,
     generatedAt: new Date().toISOString(),
