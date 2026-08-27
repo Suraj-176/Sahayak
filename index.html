@@ -30,13 +30,10 @@
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <script>
-    // Security Guard: Load config.js ONLY when testing locally offline (file://).
-    // On live Vercel website (https://), config.js is NEVER requested or loaded over the network!
-    if (window.location.protocol === 'file:') {
-      var cfgScript = document.createElement('script');
-      cfgScript.src = 'config.js';
-      document.head.appendChild(cfgScript);
-    }
+    window.SAHAYAK_CONFIG = window.SAHAYAK_CONFIG || {
+      PROVIDER_ORDER: ['groq', 'openrouter', 'nvidia', 'gemini'],
+      GROQ_MODELS: ['openai/gpt-oss-120b', 'groq/compound', 'qwen/qwen3.6-27b', 'groq/compound-mini', 'openai/gpt-oss-20b']
+    };
   </script>
 
   <style>
