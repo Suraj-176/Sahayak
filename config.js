@@ -13,12 +13,11 @@ window.SAHAYAK_CONFIG = {
   ],
   // Active Groq models in fallback order
   GROQ_MODELS: [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "deepseek-r1-distill-llama-70b",
-    "groq/compound-mini",
     "openai/gpt-oss-120b",
-    "qwen/qwen3.6-27b"
+    "groq/compound",
+    "qwen/qwen3.6-27b",
+    "groq/compound-mini",
+    "openai/gpt-oss-20b"
   ],
 
   // 2. NVIDIA NIM Keys (Free at https://build.nvidia.com)

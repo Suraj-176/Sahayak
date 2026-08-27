@@ -101,7 +101,7 @@ export default async function handler(req, res) {
             'Authorization': `Bearer ${key}`
           },
           body: JSON.stringify({
-            model: model || 'llama-3.3-70b-versatile',
+            model: model || 'openai/gpt-oss-120b',
             messages: formattedMessages,
             temperature: 0.3,
             max_tokens: 1200
@@ -112,7 +112,7 @@ export default async function handler(req, res) {
           throw new Error(err.error?.message || `HTTP ${resp.status}`);
         }
         const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `GROQ (${model || 'llama-3.3-70b-versatile'})` });
+        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `GROQ (${model || 'openai/gpt-oss-120b'})` });
       }
 
       if (activeProvider === 'nvidia') {
