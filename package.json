@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "description": "All-India Civic & Welfare AI Assistant supporting 28 States, 8 UTs, 14 Indian languages, with multi-provider LLM failover.",
   "main": "index.html",
+  "type": "module",
   "scripts": {
     "start": "npx serve ."
   },
@@ -17,6 +18,6 @@
     "openrouter",
     "gemini"
   ],
-  "author": "Sahayak Team",
+  "author": "Suraj Yadav",
   "license": "MIT"
 }
