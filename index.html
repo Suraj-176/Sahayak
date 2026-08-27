@@ -1231,7 +1231,7 @@ function App(){
     };
 
     const order = cfg.PROVIDER_ORDER || ['groq', 'nvidia', 'openrouter', 'gemini', 'openai', 'claude', 'grok', 'deepseek'];
-    // 1. Check for secure Serverless Proxy (/api/chat) if environment variables are configured on server
+    // 1. Check for secure Serverless Proxy (/api/chat) with auto-pass of config.js keys & env variables
     if(window.location.protocol && window.location.protocol.startsWith('http')){
       for(const prov of ['groq', 'nvidia', 'openrouter', 'gemini']){
         try {
@@ -1242,20 +1242,15 @@ function App(){
               provider: prov,
               model: providerKeyMap[prov]?.models?.[0],
               systemPrompt: systemPrompt,
-              messages: newHistory
+              messages: newHistory,
+              userKey: (providerKeyMap[prov]?.keys || []).join(',')
             })
           });
           const sData = await sResp.json().catch(()=>({}));
-          if(sData && sData.text){
+          if(sData && sData.text && !sData.text.includes('API Key Configuration Needed')){
             const cleanedText = cleanThinkingTags(sData.text);
             const citations = extractCitations(cleanedText, stateObj);
             return { text: cleanedText, citations };
-          }
-          if(sData && sData.error && sData.error.includes('API key')){
-            return {
-              text: `### 🏛️ Sahayak Civic Assistant\n\n⚠️ **API Key Configuration Needed**\n\nPlease add your free \`GROQ_API_KEYS\` or \`NVIDIA_API_KEYS\` in **Vercel Settings → Environment Variables**, then click **Redeploy**!`,
-              citations: []
-            };
           }
         } catch(e){}
       }
