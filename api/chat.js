@@ -8,21 +8,32 @@ export default async function handler(req, res) {
 
   const { provider, model, systemPrompt, messages, userKey } = req.body;
 
-  // Retrieve environment keys (supports comma-separated multiple keys for failover)
+  // Retrieve environment keys (supports all naming aliases and comma-separated multiple keys)
   const envKeyMap = {
-    groq: process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || userKey,
-    nvidia: process.env.NVIDIA_API_KEYS || process.env.NVIDIA_API_KEY || userKey,
-    openrouter: process.env.OPENROUTER_API_KEYS || process.env.OPENROUTER_API_KEY || userKey,
-    gemini: process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || userKey,
-    openai: process.env.OPENAI_API_KEY || userKey,
-    claude: process.env.ANTHROPIC_API_KEY || userKey,
-    grok: process.env.GROK_API_KEY || userKey,
+    groq: process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || process.env.GROQ_KEYS || process.env.GROQ_KEY || userKey,
+    nvidia: process.env.NVIDIA_API_KEYS || process.env.NVIDIA_API_KEY || process.env.NVIDIA_KEYS || process.env.NVIDIA_KEY || userKey,
+    openrouter: process.env.OPENROUTER_API_KEYS || process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEYS || process.env.OPENROUTER_KEY || userKey,
+    gemini: process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || process.env.GEMINI_KEYS || process.env.GEMINI_KEY || userKey,
+    openai: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEYS || userKey,
+    claude: process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY || userKey,
+    grok: process.env.GROK_API_KEY || process.env.XAI_API_KEY || userKey,
     deepseek: process.env.DEEPSEEK_API_KEY || userKey
   };
 
-  const activeKeyRaw = envKeyMap[provider];
+  // Find effective provider (requested provider or first available configured provider)
+  let activeProvider = provider;
+  let activeKeyRaw = envKeyMap[activeProvider];
+
   if (!activeKeyRaw) {
-    return res.status(400).json({ error: `No API key configured for provider: ${provider}` });
+    const available = Object.keys(envKeyMap).find(p => !!envKeyMap[p]);
+    if (available) {
+      activeProvider = available;
+      activeKeyRaw = envKeyMap[available];
+    }
+  }
+
+  if (!activeKeyRaw) {
+    return res.status(400).json({ error: `No API keys found in Vercel Environment Variables. Please add GROQ_API_KEYS or NVIDIA_API_KEYS in Vercel Settings -> Environment Variables.` });
   }
 
   const keys = activeKeyRaw.split(/[\n,]+/).map(k => k.trim()).filter(Boolean);
@@ -35,7 +46,7 @@ export default async function handler(req, res) {
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
     try {
-      if (provider === 'groq') {
+      if (activeProvider === 'groq') {
         const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -43,7 +54,7 @@ export default async function handler(req, res) {
             'Authorization': `Bearer ${key}`
           },
           body: JSON.stringify({
-            model: model || 'groq/compound-mini',
+            model: model || 'llama-3.3-70b-versatile',
             messages: formattedMessages,
             temperature: 0.3,
             max_tokens: 1200
@@ -54,10 +65,10 @@ export default async function handler(req, res) {
           throw new Error(err.error?.message || `HTTP ${resp.status}`);
         }
         const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `GROQ (${model})` });
+        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `GROQ (${model || 'llama-3.3-70b-versatile'})` });
       }
 
-      if (provider === 'nvidia') {
+      if (activeProvider === 'nvidia') {
         const resp = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -76,10 +87,10 @@ export default async function handler(req, res) {
           throw new Error(err.error?.message || `HTTP ${resp.status}`);
         }
         const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `NVIDIA (${model})` });
+        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `NVIDIA (${model || 'meta/llama-3.3-70b-instruct'})` });
       }
 
-      if (provider === 'openrouter') {
+      if (activeProvider === 'openrouter') {
         const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -100,10 +111,10 @@ export default async function handler(req, res) {
           throw new Error(err.error?.message || `HTTP ${resp.status}`);
         }
         const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `OpenRouter (${model})` });
+        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `OpenRouter (${model || 'openrouter/free'})` });
       }
 
-      if (provider === 'gemini') {
+      if (activeProvider === 'gemini') {
         const cleanModel = model || 'gemini-2.0-flash';
         const contents = (messages || []).map(m => ({
           role: m.role === 'assistant' ? 'model' : 'user',
@@ -126,13 +137,13 @@ export default async function handler(req, res) {
         return res.status(200).json({ text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: `Gemini (${cleanModel})` });
       }
 
-      if (provider === 'openai' || provider === 'grok' || provider === 'deepseek') {
+      if (activeProvider === 'openai' || activeProvider === 'grok' || activeProvider === 'deepseek') {
         const endpoints = {
           openai: 'https://api.openai.com/v1/chat/completions',
           grok: 'https://api.x.ai/v1/chat/completions',
           deepseek: 'https://api.deepseek.com/v1/chat/completions'
         };
-        const resp = await fetch(endpoints[provider], {
+        const resp = await fetch(endpoints[activeProvider], {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -150,10 +161,10 @@ export default async function handler(req, res) {
           throw new Error(err.error?.message || `HTTP ${resp.status}`);
         }
         const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `${provider.toUpperCase()} (${model})` });
+        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `${activeProvider.toUpperCase()} (${model || 'default'})` });
       }
 
-      if (provider === 'claude') {
+      if (activeProvider === 'claude') {
         const resp = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
@@ -173,12 +184,12 @@ export default async function handler(req, res) {
           throw new Error(err.error?.message || `HTTP ${resp.status}`);
         }
         const data = await resp.json();
-        return res.status(200).json({ text: data.content?.[0]?.text || '', provider: `Claude (${model})` });
+        return res.status(200).json({ text: data.content?.[0]?.text || '', provider: `Claude (${model || 'claude-3-7-sonnet'})` });
       }
     } catch (err) {
-      console.warn(`[Failover] Key ${i + 1}/${keys.length} for ${provider} failed:`, err.message);
+      console.warn(`[Failover] Key ${i + 1}/${keys.length} for ${activeProvider} failed:`, err.message);
       if (i === keys.length - 1) {
-        return res.status(500).json({ error: `All keys for ${provider} failed: ${err.message}` });
+        return res.status(500).json({ error: `All keys for ${activeProvider} failed: ${err.message}` });
       }
     }
   }
