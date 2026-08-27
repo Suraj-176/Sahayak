@@ -125,6 +125,56 @@ export default async function handler(req, res) {
         const data = await resp.json();
         return res.status(200).json({ text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: `Gemini (${cleanModel})` });
       }
+
+      if (provider === 'openai' || provider === 'grok' || provider === 'deepseek') {
+        const endpoints = {
+          openai: 'https://api.openai.com/v1/chat/completions',
+          grok: 'https://api.x.ai/v1/chat/completions',
+          deepseek: 'https://api.deepseek.com/v1/chat/completions'
+        };
+        const resp = await fetch(endpoints[provider], {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: model || 'gpt-4o-mini',
+            messages: formattedMessages,
+            temperature: 0.3,
+            max_tokens: 1200
+          })
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error?.message || `HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `${provider.toUpperCase()} (${model})` });
+      }
+
+      if (provider === 'claude') {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: model || 'claude-3-7-sonnet-20250219',
+            system: systemPrompt,
+            messages: messages || [],
+            max_tokens: 1200
+          })
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error?.message || `HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        return res.status(200).json({ text: data.content?.[0]?.text || '', provider: `Claude (${model})` });
+      }
     } catch (err) {
       console.warn(`[Failover] Key ${i + 1}/${keys.length} for ${provider} failed:`, err.message);
       if (i === keys.length - 1) {

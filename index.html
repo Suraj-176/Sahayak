@@ -1217,13 +1217,37 @@ function App(){
     };
 
     const order = cfg.PROVIDER_ORDER || ['groq', 'nvidia', 'openrouter', 'gemini', 'openai', 'claude', 'grok', 'deepseek'];
-    const availableProviders = order.filter(p => providerKeyMap[p]?.keys.length > 0);
+    // 1. Check for secure Serverless Proxy (/api/chat) if environment variables are configured on server
+    if(window.location.protocol && window.location.protocol.startsWith('http')){
+      for(const prov of ['groq', 'nvidia', 'openrouter', 'gemini']){
+        try {
+          const sResp = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: prov,
+              model: providerKeyMap[prov]?.models?.[0],
+              systemPrompt: systemPrompt,
+              messages: newHistory
+            })
+          });
+          if(sResp.ok){
+            const sData = await sResp.json();
+            if(sData.text){
+              const cleanedText = cleanThinkingTags(sData.text);
+              const citations = extractCitations(cleanedText, stateObj);
+              return { text: cleanedText, citations };
+            }
+          }
+        } catch(e){}
+      }
+    }
 
-    // If no keys configured in config.js yet
+    // 2. Direct client-side failover using config.js
     if(availableProviders.length === 0){
       return {
         text: `### 🏛️ Sahayak Civic Assistant
-Welcome! To activate the AI response engine, please configure your free API keys in the \`config.js\` file.`,
+Welcome! To activate the AI response engine, please configure your free API keys in the \`config.js\` file or in Vercel Environment Variables.`,
         citations: []
       };
     }
