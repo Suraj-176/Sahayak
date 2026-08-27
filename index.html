@@ -1224,28 +1224,25 @@ function App(){
     const systemPrompt = getSystemPrompt(agentType, effectiveState, selectedLang);
     const stateObj = STATES_DIRECTORY.find(s => s.code === effectiveState) || STATES_DIRECTORY[0];
 
-    // 1. If hosted on Vercel / Web server, use secure /api/chat
+    // 1. If hosted on Vercel / Web server, send single high-speed request to /api/chat
     if (window.location.protocol && window.location.protocol.startsWith('http')) {
-      const activeOrder = selectedProvider === 'auto' ? ['auto', 'groq', 'openrouter', 'nvidia'] : [selectedProvider, 'groq', 'openrouter', 'nvidia'];
-      for (const prov of activeOrder) {
-        try {
-          const sResp = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              provider: prov,
-              systemPrompt: systemPrompt,
-              messages: newHistory
-            })
-          });
-          const sData = await sResp.json().catch(() => ({}));
-          if (sData && sData.text) {
-            const cleanedText = cleanThinkingTags(sData.text);
-            const citations = extractCitations(cleanedText, stateObj);
-            return { text: cleanedText, citations };
-          }
-        } catch (e) {}
-      }
+      try {
+        const sResp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'groq',
+            systemPrompt: systemPrompt,
+            messages: newHistory
+          })
+        });
+        const sData = await sResp.json().catch(() => ({}));
+        if (sData && sData.text && !sData.text.includes('Temporary High Traffic')) {
+          const cleanedText = cleanThinkingTags(sData.text);
+          const citations = extractCitations(cleanedText, stateObj);
+          return { text: cleanedText, citations };
+        }
+      } catch (e) {}
     }
 
     // 2. Direct fallback for Local PC (file://) or Standalone execution
