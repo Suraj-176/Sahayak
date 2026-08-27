@@ -1,0 +1,22 @@
+{
+  "name": "sahayak-civic-assistant",
+  "version": "2.0.0",
+  "description": "All-India Civic & Welfare AI Assistant supporting 28 States, 8 UTs, 14 Indian languages, with multi-provider LLM failover.",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "india",
+    "civic-tech",
+    "welfare-schemes",
+    "rti",
+    "election-info",
+    "ai-assistant",
+    "groq",
+    "openrouter",
+    "gemini"
+  ],
+  "author": "Sahayak Team",
+  "license": "MIT"
+}

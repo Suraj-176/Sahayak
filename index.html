@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sahayak — Civic & Welfare AI Assistant for India</title>
+  <meta name="description" content="All-India civic assistant for 28 States & 8 UTs. Find welfare schemes, election & candidate info, file grievances & RTI in all Indian languages.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <script>
+    (function(){
+      var originalWarn = console.warn;
+      console.warn = function(){
+        var args = Array.prototype.slice.call(arguments);
+        if(args.some(function(a){ return typeof a === 'string' && a.indexOf('in-browser Babel transformer') !== -1; })){
+          return;
+        }
+        originalWarn.apply(console, args);
+      };
+    })();
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <!-- Free Tokens Configuration File -->
+  <script src="config.js"></script>
+
+  <style>
+    :root{
+      --saffron:#FF9933;
+      --saffron-deep:#B8650A;
+      --green:#128807;
+      --green-deep:#0C6B05;
+      --navy:#0B2158;
+      --chakra:#1450A3;
+      --ink:#15161F;
+      --muted:#71738A;
+      --bg:#F7F8FA;
+      --surface:#FFFFFF;
+      --surface-soft:#F0F2F6;
+      --border:#E3E5ED;
+      --radius-lg:20px;
+      --radius-md:14px;
+      --radius-sm:10px;
+      --shadow-sm:0 2px 6px rgba(15,15,20,0.04);
+      --shadow-md:0 16px 40px -16px rgba(15,15,20,0.14);
+      --shadow-lg:0 24px 48px -12px rgba(15,15,20,0.22);
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;width:100%;height:100%;}
+    #root{
+      height:100vh;
+      width:100vw;
+      display:flex;
+      position:relative;
+      overflow:hidden;
+    }
+    .bg-blobs{position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden;}
+    .bg-blobs span{position:absolute; border-radius:50%; filter:blur(72px); opacity:0.18;}
+    .bg-blobs .b1{width:460px;height:460px; background:var(--saffron); top:-160px; left:-120px;}
+    .bg-blobs .b2{width:420px;height:420px; background:var(--chakra); bottom:-140px; left:260px;}
+    .bg-blobs .b3{width:380px;height:380px; background:var(--green); bottom:40px; right:-120px;}
+
+    /* ---------- Sidebar ---------- */
+    .sidebar{
+      width:280px; flex:0 0 auto; z-index:2;
+      background:rgba(255,255,255,0.92); backdrop-filter:blur(12px);
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column;
+      padding:16px 14px; height:100%; overflow-y:auto; overflow-x:hidden;
+    }
+    .brand{display:flex; align-items:center; gap:10px; padding:4px 6px 16px;}
+    .brand-mark{
+      width:36px; height:36px; border-radius:10px; flex:0 0 auto;
+      background:linear-gradient(135deg, var(--saffron), var(--chakra));
+      display:flex; align-items:center; justify-content:center; color:#fff;
+      box-shadow:0 4px 12px rgba(255,153,51,0.28);
+    }
+    .brand-name{font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:16px; color:var(--ink); line-height:1.2; letter-spacing:-0.2px;}
+    .brand-sub{font-size:11px; color:var(--muted); font-weight:500; margin-top:2px;}
+
+    .new-chat-btn{
+      display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+      padding:10px 14px; border-radius:var(--radius-sm); border:1px solid var(--border);
+      background:var(--surface); font-weight:600; font-size:13px; color:var(--ink);
+      cursor:pointer; margin-bottom:14px; transition:all .15s ease;
+      box-shadow:var(--shadow-sm);
+    }
+    .new-chat-btn:hover{background:var(--surface-soft); border-color:#CBD0DD; transform:translateY(-1px);}
+
+    .nav-label{font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); font-weight:700; padding:6px 8px 6px;}
+    .nav-label.collapsible{display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;}
+    .nav-label.collapsible .chevron{display:flex; transition:transform .18s;}
+    .nav-label.collapsible .chevron.open{transform:rotate(180deg);}
+    
+    .nav-item{
+      display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--radius-sm);
+      cursor:pointer; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:3px;
+      border:1px solid transparent; transition:background .12s, border-color .12s;
+    }
+    .nav-item:hover{background:var(--surface-soft);}
+    .nav-item.active{background:var(--surface-soft); border-color:var(--border);}
+    .nav-icon{width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+    .nav-icon.auto{background:linear-gradient(135deg,var(--saffron),var(--chakra)); color:#fff;}
+    .nav-icon.scheme{background:rgba(18,136,7,0.12); color:var(--green);}
+    .nav-icon.voter{background:rgba(11,33,88,0.1); color:var(--navy);}
+    .nav-icon.grievance{background:rgba(255,153,51,0.16); color:var(--saffron-deep);}
+    .nav-icon.portals{background:rgba(20,80,163,0.12); color:var(--chakra);}
+    .nav-item-meta{display:flex; flex-direction:column; line-height:1.25;}
+    .nav-item-sub{font-size:10.5px; font-weight:400; color:var(--muted); margin-top:2px;}
+
+    .recent-list{display:flex; flex-direction:column; gap:2px; margin-bottom:8px; max-height:220px; overflow-y:auto; overflow-x:hidden;}
+    .recent-item{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:7px 10px; border-radius:var(--radius-sm); font-size:12px; color:var(--muted); cursor:pointer;
+      transition:all .12s; position:relative;
+    }
+    .recent-item:hover{background:var(--surface-soft); color:var(--ink);}
+    .recent-item.active{background:var(--surface-soft); color:var(--ink); font-weight:600;}
+    .recent-title{
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;
+    }
+    .delete-chat-btn{
+      background:none; border:none; color:var(--muted); cursor:pointer; padding:2px 4px;
+      border-radius:4px; display:none; align-items:center; justify-content:center;
+      margin-left:6px; opacity:0.7; transition:all .1s;
+    }
+    .delete-chat-btn:hover{color:#E53935; opacity:1; background:rgba(229,57,53,0.1);}
+    .recent-item:hover .delete-chat-btn{display:flex;}
+
+    .sidebar-footer{margin-top:auto; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;}
+    .sidebar-disclaimer{font-size:10.5px; color:var(--muted); line-height:1.5; text-align:center;}
+
+    /* ---------- Main ---------- */
+    .main{flex:1; display:flex; flex-direction:column; min-width:0; z-index:1; position:relative; height:100%; overflow:hidden;}
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 32px; border-bottom:1px solid var(--border);
+      background:rgba(247,248,250,0.85); backdrop-filter:blur(10px); gap:12px; flex-wrap:wrap;
+    }
+    .topbar-left{display:flex; align-items:center; gap:12px;}
+    .topbar-right{display:flex; align-items:center; gap:10px;}
+
+    .mode{display:flex; align-items:center; gap:9px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:14.5px;}
+    .mode-icon{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff;}
+    
+    .select-dropdown{
+      display:flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border);
+      border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600; color:var(--ink);
+      cursor:pointer; outline:none; transition:border-color .15s;
+    }
+    .select-dropdown:hover{border-color:var(--chakra);}
+    .select-dropdown select{border:none; outline:none; background:transparent; font-size:12px; font-weight:600; color:var(--ink); cursor:pointer;}
+
+    .status-pill{
+      display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--green-deep);
+      background:rgba(18,136,7,0.1); padding:6px 12px; border-radius:999px; border:1px solid rgba(18,136,7,0.15);
+    }
+    .status-dot{width:6.5px; height:6.5px; border-radius:50%; background:var(--green); animation:pulse 1.8s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.35;}}
+
+    .chat-scroll{flex:1; overflow-y:auto; overflow-x:hidden; padding:16px 0 6px; scroll-behavior:smooth;}
+    .chat-inner{width:100%; max-width:1300px; margin:0 auto; padding:0 32px; display:flex; flex-direction:column; gap:14px;}
+
+    /* ---------- Browse by Category ---------- */
+    .browse-inner{width:100%; max-width:1300px; margin:0 auto; padding:8px 32px;}
+    .browse-heading{text-align:center; margin-bottom:16px;}
+    .browse-heading h2{font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:23px; margin:0 0 6px; color:var(--ink);}
+    .browse-heading p{font-size:13.5px; color:var(--muted); margin:0;}
+    
+    .browse-filter-row{display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:20px; flex-wrap:wrap;}
+    .filter-pill{
+      display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px;
+      border:1px solid var(--border); background:var(--surface); color:var(--muted);
+      font-size:12px; font-weight:600; cursor:pointer; transition:all .15s ease;
+    }
+    .filter-pill:hover{border-color:var(--chakra); color:var(--ink); transform:translateY(-1px);}
+    .filter-pill.active{background:var(--ink); color:#fff; border-color:var(--ink); box-shadow:var(--shadow-sm);}
+    .filter-pill.scheme.active{background:var(--green); border-color:var(--green);}
+    .filter-pill.identity.active{background:#0D7C66; border-color:#0D7C66;}
+    .filter-pill.rto.active{background:var(--chakra); border-color:var(--chakra);}
+    .filter-pill.eseva.active{background:#8E44AD; border-color:#8E44AD;}
+    .filter-pill.worktax.active{background:#2E5B88; border-color:#2E5B88;}
+    .filter-pill.voter.active{background:var(--navy); border-color:var(--navy);}
+    .filter-pill.grievance.active{background:var(--saffron-deep); border-color:var(--saffron-deep);}
+
+    .category-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px;}
+    .category-card{
+      border:1px solid var(--border); border-radius:var(--radius-md); padding:16px;
+      background:var(--surface); cursor:pointer; transition:all .18s ease;
+      box-shadow:var(--shadow-sm); display:flex; flex-direction:column;
+    }
+    .category-card:hover{border-color:var(--chakra); box-shadow:var(--shadow-md); transform:translateY(-2px);}
+    .category-card-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+    .category-icon{
+      width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    }
+    .category-icon.scheme{background:rgba(18,136,7,0.12); color:var(--green);}
+    .category-icon.identity{background:rgba(13,124,102,0.12); color:#0D7C66;}
+    .category-icon.rto{background:rgba(20,80,163,0.12); color:var(--chakra);}
+    .category-icon.eseva{background:rgba(142,68,173,0.12); color:#8E44AD;}
+    .category-icon.worktax{background:rgba(46,91,136,0.12); color:#2E5B88;}
+    .category-icon.voter{background:rgba(11,33,88,0.1); color:var(--navy);}
+    .category-icon.grievance{background:rgba(255,153,51,0.16); color:var(--saffron-deep);}
+    .category-badge{
+      font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;
+      padding:3px 8px; border-radius:999px;
+    }
+    .category-badge.scheme{background:rgba(18,136,7,0.1); color:var(--green-deep);}
+    .category-badge.identity{background:rgba(13,124,102,0.1); color:#0D7C66;}
+    .category-badge.rto{background:rgba(20,80,163,0.1); color:var(--chakra);}
+    .category-badge.eseva{background:rgba(142,68,173,0.1); color:#8E44AD;}
+    .category-badge.worktax{background:rgba(46,91,136,0.1); color:#2E5B88;}
+    .category-badge.voter{background:rgba(11,33,88,0.08); color:var(--navy);}
+    .category-badge.grievance{background:rgba(255,153,51,0.15); color:var(--saffron-deep);}
+    .category-label{font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:14px; margin-bottom:4px; color:var(--ink);}
+    .category-blurb{font-size:12px; color:var(--muted); line-height:1.4;}
+
+    /* ---------- State Directory View ---------- */
+    .directory-container{width:100%; max-width:1300px; margin:0 auto; padding:8px 32px;}
+    .directory-hero{
+      background:linear-gradient(135deg, #0B2158 0%, #1450A3 100%);
+      color:#fff; border-radius:var(--radius-lg); padding:22px 28px; margin-bottom:18px;
+      display:flex; align-items:center; justify-content:space-between; gap:20px; box-shadow:var(--shadow-md);
+    }
+    .directory-hero h2{font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; margin:0 0 6px; font-weight:800;}
+    .directory-hero p{font-size:13px; opacity:0.88; margin:0; line-height:1.5;}
+    .state-cards-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(310px, 1fr)); gap:14px;}
+    .state-card{
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
+      padding:16px 18px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:10px;
+      transition:all .15s;
+    }
+    .state-card:hover{border-color:var(--chakra); transform:translateY(-1px);}
+    .state-card-header{display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--surface-soft); padding-bottom:8px;}
+    .state-card-title{font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:14.5px; color:var(--ink);}
+    .state-badge{font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; background:rgba(20,80,163,0.1); color:var(--chakra);}
+    .state-links{display:flex; flex-direction:column; gap:6px; font-size:12px;}
+    .state-link-row{display:flex; align-items:center; justify-content:space-between; color:var(--muted);}
+    .state-link-row a{color:var(--chakra); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px;}
+    .state-link-row a:hover{text-decoration:underline;}
+    .helpline-chip{background:rgba(255,153,51,0.12); color:var(--saffron-deep); font-weight:700; padding:2px 6px; border-radius:6px; font-size:11px;}
+
+    /* ---------- Chat Message Cards ---------- */
+    @keyframes rise{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+    .msg{display:flex; gap:12px; animation:rise .22s ease; width:100%;}
+    .msg.user{flex-direction:row-reverse;}
+    .msg-avatar{width:32px; height:32px; border-radius:10px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px;}
+    .msg-avatar.user{background:var(--ink);}
+    .msg-avatar.scheme{background:var(--green);}
+    .msg-avatar.voter{background:var(--navy);}
+    .msg-avatar.grievance{background:var(--saffron);}
+    .msg-avatar.auto{background:linear-gradient(135deg,var(--saffron),var(--chakra));}
+
+    .msg-card{
+      width:100%; background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-md); border-bottom-left-radius:4px;
+      padding:15px 20px; font-size:14px; line-height:1.62; box-shadow:var(--shadow-sm);
+    }
+    .msg.user .msg-card{
+      width:auto; max-width:80%; background:var(--ink); color:#fff;
+      border-color:var(--ink); border-bottom-left-radius:var(--radius-md); border-bottom-right-radius:4px;
+    }
+    .msg-card p{margin:0 0 8px;} .msg-card p:last-child{margin:0;}
+    .msg-card h1,.msg-card h2,.msg-card h3{font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; margin:12px 0 6px; color:var(--ink); font-size:15px;}
+    .msg-card h1:first-child,.msg-card h2:first-child,.msg-card h3:first-child{margin-top:0;}
+    .msg-card table{width:100%; border-collapse:collapse; margin:10px 0; font-size:13px;}
+    .msg-card th, .msg-card td{border:1px solid var(--border); padding:7px 9px; text-align:left;}
+    .msg-card ul{margin:8px 0; padding-left:20px;}
+    .msg-card ul li{margin-bottom:5px; line-height:1.58;}
+    .msg-card ol{
+      list-style:none; counter-reset:step; margin:10px 0; padding-left:0;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .msg-card ol > li{
+      counter-increment:step; position:relative; padding-left:32px;
+      margin-bottom:0; font-size:14px; line-height:1.6;
+    }
+    .msg-card ol > li::before{
+      content:counter(step); position:absolute; left:0; top:2px;
+      width:22px; height:22px; border-radius:50%;
+      background:linear-gradient(135deg,var(--saffron),var(--chakra)); color:#fff;
+      font-size:11.5px; font-weight:800; font-family:'Inter',sans-serif;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 2px 6px rgba(20,80,163,0.22);
+    }
+    .msg-card ol > li > p{margin:0 0 4px;}
+    .msg-card ol > li > p:last-child{margin-bottom:0;}
+    .msg-card ol > li > ul{margin:4px 0 6px; padding-left:18px;}
+    .msg-card strong{color:var(--ink); font-weight:700;}
+    .msg.user .msg-card strong{color:#fff;}
+    .msg-card a{color:var(--chakra); font-weight:600; text-decoration:none;}
+    .msg-card a:hover{text-decoration:underline;}
+    .msg-card code{background:var(--surface-soft); padding:1px 6px; border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:12px;}
+
+    .msg-card-top{display:flex; align-items:center; margin-bottom:6px;}
+    .msg-card-bottom{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-top:10px; padding-top:8px; border-top:1px solid var(--border); flex-wrap:wrap;
+    }
+    .agent-label{
+      display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:800;
+      letter-spacing:0.3px; text-transform:uppercase; padding:3px 10px; border-radius:999px;
+    }
+    .agent-label.scheme{background:rgba(18,136,7,0.1); color:var(--green-deep);}
+    .agent-label.voter{background:rgba(11,33,88,0.08); color:var(--navy);}
+    .agent-label.grievance{background:rgba(255,153,51,0.15); color:var(--saffron-deep);}
+
+    .sources-row{display:flex; flex-wrap:wrap; gap:6px; flex:1; min-width:0;}
+    .source-chip{
+      font-size:11px; font-weight:600; padding:4px 10px; border-radius:999px;
+      background:var(--surface-soft); color:var(--chakra); text-decoration:none; border:1px solid var(--border);
+      max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all .12s;
+    }
+    .source-chip:hover{border-color:var(--chakra); background:#fff;}
+
+    .picker-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+    .picker-row button{
+      display:flex; align-items:center; gap:6px; font-family:'Inter',sans-serif; font-weight:700; font-size:12px;
+      padding:8px 14px; border-radius:999px; cursor:pointer; border:1px solid var(--border); background:var(--surface);
+      transition:all .15s;
+    }
+    .picker-row button.scheme{color:var(--green-deep);}
+    .picker-row button.voter{color:var(--navy);}
+    .picker-row button.grievance{color:var(--saffron-deep);}
+    .picker-row button:hover{border-color:currentColor; transform:translateY(-1px);}
+
+    .typing-card{display:inline-flex; gap:6px; padding:14px 18px; border-radius:var(--radius-md); border-bottom-left-radius:4px; background:var(--surface); border:1px solid var(--border);}
+    .typing-dot{width:7px; height:7px; border-radius:50%; background:var(--muted); animation:bounce 1.2s infinite ease-in-out;}
+    .typing-dot:nth-child(2){animation-delay:0.15s;}
+    .typing-dot:nth-child(3){animation-delay:0.3s;}
+    @keyframes bounce{0%,80%,100%{transform:translateY(0); opacity:0.4;} 40%{transform:translateY(-5px); opacity:1;}}
+
+    /* ---------- Empty State Suggestions ---------- */
+    .empty-state{margin:32px auto; text-align:center; max-width:900px; width:100%;}
+    .empty-icon{
+      width:58px; height:58px; border-radius:18px; margin:0 auto 16px;
+      background:linear-gradient(135deg,var(--saffron),var(--chakra));
+      display:flex; align-items:center; justify-content:center; color:#fff;
+      box-shadow:0 8px 20px rgba(20,80,163,0.22);
+    }
+    .empty-state h2{font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:22px; margin:0 0 8px; color:var(--ink);}
+    .empty-state p{font-size:13.5px; line-height:1.6; color:var(--muted); margin:0 0 22px;}
+    .suggestion-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; text-align:left;}
+    .suggestion-card{
+      border:1px solid var(--border); border-radius:var(--radius-md); padding:13px 14px;
+      cursor:pointer; background:var(--surface); font-size:12.5px; line-height:1.5; color:var(--ink);
+      transition:all .15s ease; box-shadow:var(--shadow-sm);
+    }
+    .suggestion-card:hover{border-color:var(--chakra); box-shadow:var(--shadow-md); transform:translateY(-1px);}
+    .suggestion-tag{font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:block;}
+    .suggestion-tag.scheme{color:var(--green);}
+    .suggestion-tag.voter{color:var(--navy);}
+    .suggestion-tag.grievance{color:var(--saffron-deep);}
+
+    /* ---------- Composer ---------- */
+    .composer{padding:10px 32px 18px; background:linear-gradient(to top, var(--bg) 70%, transparent); width:100%;}
+    .composer-inner{width:100%; max-width:1300px; margin:0 auto;}
+    .input-shell{
+      display:flex; align-items:flex-end; gap:8px; background:var(--surface);
+      border:1px solid var(--border); border-radius:26px; padding:8px 12px; box-shadow:var(--shadow-md);
+      transition:border-color .15s, box-shadow .15s;
+    }
+    .input-shell:focus-within{border-color:var(--chakra); box-shadow:0 8px 24px rgba(20,80,163,0.15);}
+    .input-shell textarea{
+      flex:1; resize:none; border:none; outline:none; background:transparent;
+      font-family:'Inter',sans-serif; font-size:14px; line-height:1.5; color:var(--ink);
+      padding:9px 6px; min-height:24px; max-height:130px;
+    }
+    .mic-btn{
+      width:40px; height:40px; border-radius:50%; flex:0 0 auto; border:1px solid var(--border); cursor:pointer;
+      background:var(--surface-soft); color:var(--muted);
+      display:flex; align-items:center; justify-content:center; transition:all .15s;
+    }
+    .mic-btn:hover:not(:disabled){color:var(--chakra); border-color:var(--chakra); background:#fff;}
+    .mic-btn.listening{background:var(--saffron); color:#fff; border-color:var(--saffron); animation:mic-pulse 1.4s infinite;}
+    .mic-btn:disabled{opacity:0.3; cursor:not-allowed;}
+    .mic-error{
+      display:flex; align-items:flex-start; gap:8px; justify-content:space-between;
+      background:#FFF3E0; color:var(--saffron-deep); border:1px solid #FFD9A8;
+      border-radius:var(--radius-sm); padding:9px 12px; font-size:12px; line-height:1.5; margin-bottom:8px;
+    }
+    .mic-error button{background:none; border:none; color:var(--saffron-deep); cursor:pointer; flex:0 0 auto; padding:2px;}
+    @keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,153,51,0.4);} 50%{box-shadow:0 0 0 8px rgba(255,153,51,0);}}
+    .send-btn{
+      width:40px; height:40px; border-radius:50%; flex:0 0 auto; border:none; cursor:pointer;
+      background:linear-gradient(135deg,var(--saffron),var(--chakra)); color:#fff;
+      display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(20,80,163,0.28);
+      transition:all .15s ease;
+    }
+    .send-btn:hover:not(:disabled){transform:scale(1.04); box-shadow:0 8px 20px rgba(20,80,163,0.38);}
+    .send-btn:disabled{opacity:0.35; cursor:not-allowed; box-shadow:none; transform:none;}
+
+    .composer-actions{
+      display:flex; align-items:center; gap:6px; flex:0 0 auto;
+    }
+    .action-icon-btn{
+      width:38px; height:38px; border-radius:50%; flex:0 0 auto; border:1px solid var(--border);
+      background:var(--surface-soft); color:var(--muted); cursor:pointer;
+      display:flex; align-items:center; justify-content:center; transition:all .16s ease;
+    }
+    .action-icon-btn:hover:not(:disabled){
+      color:var(--chakra); border-color:var(--chakra); background:#fff; transform:scale(1.05);
+    }
+    .action-icon-btn.live-active{
+      background:linear-gradient(135deg, #E53935, #C62828); color:#fff; border-color:#C62828;
+      box-shadow:0 0 12px rgba(229,57,53,0.45); animation:pulse-live 1.6s infinite;
+    }
+    .action-icon-btn.auto-speak-active{
+      background:rgba(20,80,163,0.1); color:var(--chakra); border-color:var(--chakra);
+    }
+    .action-icon-btn.auto-speak-muted{
+      color:var(--muted); opacity:0.6; background:var(--surface-soft);
+    }
+    .live-dot-pulse{
+      width:7px; height:7px; border-radius:50%; background:#fff; display:inline-block;
+      box-shadow:0 0 6px #fff; animation:dot-flash 1s infinite alternate;
+    }
+    @keyframes dot-flash{from{opacity:0.3;} to{opacity:1;}}
+    @keyframes pulse-live{
+      0%{box-shadow:0 0 0 0 rgba(229,57,53,0.6);}
+      70%{box-shadow:0 0 0 8px rgba(229,57,53,0);}
+      100%{box-shadow:0 0 0 0 rgba(229,57,53,0);}
+    }
+
+    .msg-actions-row{
+      margin-left:auto; display:inline-flex; align-items:center; gap:6px; flex:0 0 auto;
+    }
+    .card-action-btn{
+      display:inline-flex; align-items:center; gap:4px;
+      padding:5px 10px; border-radius:999px; border:1px solid var(--border);
+      background:var(--surface-soft); color:var(--muted); font-size:11px; font-weight:600;
+      cursor:pointer; flex:0 0 auto; transition:all .15s ease;
+    }
+    .card-action-btn:hover{color:var(--chakra); border-color:var(--chakra); background:#fff; transform:translateY(-1px); box-shadow:var(--shadow-sm);}
+    .card-action-btn.copied{background:rgba(18,136,7,0.12); color:var(--green); border-color:var(--green);}
+
+    .speak-btn{
+      display:inline-flex; align-items:center; gap:5px;
+      padding:5px 11px; border-radius:999px; border:1px solid var(--border);
+      background:var(--surface-soft); color:var(--muted); font-size:11px; font-weight:600;
+      cursor:pointer; flex:0 0 auto; transition:all .15s ease;
+    }
+    .speak-btn:hover{color:var(--chakra); border-color:var(--chakra); background:#fff; transform:translateY(-1px); box-shadow:var(--shadow-sm);}
+    .speak-btn.speaking{background:rgba(255,153,51,0.16); color:var(--saffron-deep); border-color:var(--saffron);}
+
+    .mobile-menu-btn{
+      display:none; width:34px; height:34px; border-radius:8px; border:1px solid var(--border);
+      background:var(--surface); color:var(--ink); cursor:pointer; align-items:center; justify-content:center;
+      transition:all .15s ease;
+    }
+    .mobile-menu-btn:hover{border-color:var(--chakra); color:var(--chakra);}
+    .sidebar-backdrop{
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:90;
+      backdrop-filter:blur(2px);
+    }
+
+    ::-webkit-scrollbar{width:7px;}
+    ::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+    
+    @media(max-width:768px){
+      .sidebar{
+        display:none; position:fixed; top:0; left:0; bottom:0; width:280px; z-index:100;
+        box-shadow:var(--shadow-lg);
+      }
+      .sidebar.mobile-open{display:flex; animation:slide-in .2s ease;}
+      .sidebar-backdrop.mobile-open{display:block;}
+      .mobile-menu-btn{display:inline-flex;}
+      .category-grid{grid-template-columns:1fr;}
+      .topbar{padding:10px 14px; gap:8px;}
+      .chat-inner, .browse-inner, .directory-container, .composer{padding-left:12px; padding-right:12px;}
+    }
+    @keyframes slide-in{from{transform:translateX(-100%);} to{transform:translateX(0);}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect } = React;
+
+/* ==========================================================================
+   1. ICONS (SVG)
+   ========================================================================== */
+const Icon = {
+  user: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  sparkle: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6"/></svg>,
+  leaf: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 20c8 0 14-6 14-14V5h-1C10 5 5 10 5 18v2z"/><path d="M5 20c4-6 7-9 12-12"/></svg>,
+  ballot: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>,
+  doc: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h7l4 4v14a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 16.5h4"/></svg>,
+  send: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>,
+  close: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>,
+  plus: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>,
+  flag: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3v18"/><path d="M5 4h13l-3 4 3 4H5"/></svg>,
+  grid: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
+  globe: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
+  map: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,
+  external: (p) => <svg viewBox="0 0 24 24" width={p.s||14} height={p.s||14} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
+  mic: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3.5"/><path d="M8.5 21.5h7"/></svg>,
+  speaker: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 9a4.2 4.2 0 010 6"/><path d="M19 6.5a8 8 0 010 11"/></svg>,
+  chevron: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>,
+  cap: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9l10-5 10 5-10 5-10-5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/><path d="M22 9v6"/></svg>,
+  heart: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.5-9.5-9C.5 7.5 3 4 6.5 4c2 0 3.5 1.2 4.5 2.6C12 5.2 13.5 4 15.5 4 19 4 21.5 7.5 21.5 11c-2.5 4.5-9.5 9-9.5 9z"/></svg>,
+  shield: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 7.6-8 9-4.6-1.4-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>,
+  access: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="4" r="1.6" fill="currentColor" stroke="none"/><path d="M12 7v5l4 5M12 12l-4 5M8 10h8"/></svg>,
+  hammer: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 6l4 4"/><path d="M3 21l7-7"/><path d="M12.5 8.5l4-4 4 4-4 4z"/><path d="M9 12l3 3"/></svg>,
+  briefcase: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M3 12h18"/></svg>,
+  home: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1v-9"/></svg>,
+  users: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 3-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="18" cy="9" r="2.4"/><path d="M15.7 14.3c2.8.4 4.8 2.3 4.8 5.7"/></svg>,
+  search: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  userCheck: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>,
+  alert: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  scale: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18M3 7h18"/></svg>,
+  fileText: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  car: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10l-2.4-4.2A2 2 0 0011.9 5H6.1a2 2 0 00-1.7.9L2 10s-2.7.6-4.5 1.1C-3.3 11.3-4 12.1-4 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>,
+  idCard: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><line x1="14" y1="9" x2="18" y2="9"/><line x1="14" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>,
+  fileCheck: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>,
+  building: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="18"/><line x1="15" y1="22" x2="15" y2="18"/><line x1="9" y1="6" x2="9.01" y2="6"/><line x1="15" y1="6" x2="15.01" y2="6"/><line x1="9" y1="10" x2="9.01" y2="10"/><line x1="15" y1="10" x2="15.01" y2="10"/><line x1="9" y1="14" x2="9.01" y2="14"/><line x1="15" y1="14" x2="15.01" y2="14"/></svg>,
+  speakerMute: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>,
+  radioLive: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/></svg>,
+  waveLive: (p) => <svg viewBox="0 0 24 24" width={p.s||16} height={p.s||16} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 10v4M6 6v12M10 3v18M14 8v8M18 5v14M22 10v4"/></svg>
+};
+
+function getIcon(name, props){
+  const fn = Icon[name] || Icon.sparkle;
+  return fn(props || {});
+}
+
+/* ==========================================================================
+   2. ALL 28 STATES & 8 UNION TERRITORIES COMPLETE DIRECTORY
+   ========================================================================== */
+const STATES_DIRECTORY = [
+  { code:'ALL', name:'All-India (Central)', type:'Central', grievancePortal:'pgportal.gov.in', rtiPortal:'rtionline.gov.in', schemesPortal:'myscheme.gov.in', ceoPortal:'eci.gov.in', helpline:'1800-11-4000 / 1950' },
+  { code:'AP', name:'Andhra Pradesh', type:'State', grievancePortal:'spandana.ap.gov.in', rtiPortal:'rtionline.ap.gov.in', schemesPortal:'navasakam.ap.gov.in', ceoPortal:'ceoandhra.nic.in', helpline:'1902' },
+  { code:'AR', name:'Arunachal Pradesh', type:'State', grievancePortal:'arunachalcm.gov.in', rtiPortal:'rtionline.gov.in', schemesPortal:'arunachalpradesh.gov.in', ceoPortal:'ceoarunachal.nic.in', helpline:'1800-345-3574' },
+  { code:'AS', name:'Assam', type:'State', grievancePortal:'cm.assam.gov.in', rtiPortal:'rtps.assam.gov.in', schemesPortal:'assam.gov.in', ceoPortal:'ceoassam.nic.in', helpline:'1800-345-3574' },
+  { code:'BR', name:'Bihar', type:'State', grievancePortal:'lokshikayat.bihar.gov.in', rtiPortal:'rti.bihar.gov.in', schemesPortal:'state.bihar.gov.in', ceoPortal:'ceobihar.nic.in', helpline:'1800-345-6284' },
+  { code:'CG', name:'Chhattisgarh', type:'State', grievancePortal:'janshikayat.cg.nic.in', rtiPortal:'rtionline.cg.nic.in', schemesPortal:'cgstate.gov.in', ceoPortal:'ceochhattisgarh.nic.in', helpline:'1100' },
+  { code:'GA', name:'Goa', type:'State', grievancePortal:'goaonline.gov.in', rtiPortal:'goa.gov.in', schemesPortal:'services.goaonline.gov.in', ceoPortal:'ceogoa.nic.in', helpline:'1905' },
+  { code:'GJ', name:'Gujarat', type:'State', grievancePortal:'swagat.gujarat.gov.in', rtiPortal:'onlinerti.gujarat.gov.in', schemesPortal:'digitalgujarat.gov.in', ceoPortal:'ceogujarat.gov.in', helpline:'1800-233-5500' },
+  { code:'HR', name:'Haryana', type:'State', grievancePortal:'cmweb.haryana.gov.in', rtiPortal:'rtionline.haryana.gov.in', schemesPortal:'saralharyana.gov.in', ceoPortal:'ceoharyana.gov.in', helpline:'1800-180-2022' },
+  { code:'HP', name:'Himachal Pradesh', type:'State', grievancePortal:'esamadhan.nic.in', rtiPortal:'himachal.nic.in', schemesPortal:'himachal.nic.in', ceoPortal:'ceohimachal.nic.in', helpline:'1100 (Seva Sankalp)' },
+  { code:'JH', name:'Jharkhand', type:'State', grievancePortal:'jharsewa.jharkhand.gov.in', rtiPortal:'jharkhand.gov.in', schemesPortal:'jharkhand.gov.in', ceoPortal:'ceojharkhand.nic.in', helpline:'181 (Jan Samvad)' },
+  { code:'KA', name:'Karnataka', type:'State', grievancePortal:'ipgrs.karnataka.gov.in', rtiPortal:'rtionline.karnataka.gov.in', schemesPortal:'sevasindhu.karnataka.gov.in', ceoPortal:'ceokarnataka.kar.nic.in', helpline:'1902 (Janaspandana)' },
+  { code:'KL', name:'Kerala', type:'State', grievancePortal:'cmo.kerala.gov.in', rtiPortal:'rti.kerala.gov.in', schemesPortal:'edistrict.kerala.gov.in', ceoPortal:'ceokerala.gov.in', helpline:'1076 / 155300' },
+  { code:'MP', name:'Madhya Pradesh', type:'State', grievancePortal:'cmhelpline.mp.gov.in', rtiPortal:'samadhan.mp.gov.in', schemesPortal:'mp.gov.in', ceoPortal:'ceomadhyapradesh.nic.in', helpline:'181 (CM Helpline)' },
+  { code:'MH', name:'Maharashtra', type:'State', grievancePortal:'aaplesarkar.mahaonline.gov.in', rtiPortal:'rtionline.maharashtra.gov.in', schemesPortal:'mahaonline.gov.in', ceoPortal:'ceo.maharashtra.gov.in', helpline:'1800-120-8040' },
+  { code:'MN', name:'Manipur', type:'State', grievancePortal:'cm.manipur.gov.in', rtiPortal:'manipur.gov.in', schemesPortal:'manipur.gov.in', ceoPortal:'ceomanipur.nic.in', helpline:'1800-345-3818' },
+  { code:'ML', name:'Meghalaya', type:'State', grievancePortal:'megpgrams.gov.in', rtiPortal:'meghalaya.gov.in', schemesPortal:'meghalaya.gov.in', ceoPortal:'ceomeghalaya.nic.in', helpline:'1905' },
+  { code:'MZ', name:'Mizoram', type:'State', grievancePortal:'mizoram.gov.in', rtiPortal:'mizoram.gov.in', schemesPortal:'mizoram.gov.in', ceoPortal:'ceomizoram.nic.in', helpline:'1905' },
+  { code:'NL', name:'Nagaland', type:'State', grievancePortal:'nagaland.gov.in', rtiPortal:'nagaland.gov.in', schemesPortal:'nagaland.gov.in', ceoPortal:'ceonagaland.nic.in', helpline:'1800-345-3704' },
+  { code:'OD', name:'Odisha', type:'State', grievancePortal:'eabhijog.gov.in', rtiPortal:'rtionline.odisha.gov.in', schemesPortal:'odisha.gov.in', ceoPortal:'ceoorissa.nic.in', helpline:'1800-345-6770' },
+  { code:'PB', name:'Punjab', type:'State', grievancePortal:'connect.punjab.gov.in', rtiPortal:'punjab.gov.in', schemesPortal:'punjab.gov.in', ceoPortal:'ceopunjab.gov.in', helpline:'1100' },
+  { code:'RJ', name:'Rajasthan', type:'State', grievancePortal:'sampark.rajasthan.gov.in', rtiPortal:'jansoochna.rajasthan.gov.in', schemesPortal:'rajasthan.gov.in', ceoPortal:'ceorajasthan.nic.in', helpline:'181 (Sampark)' },
+  { code:'SK', name:'Sikkim', type:'State', grievancePortal:'sikkim.gov.in', rtiPortal:'sikkim.gov.in', schemesPortal:'sikkim.gov.in', ceoPortal:'ceosikkim.nic.in', helpline:'1800-345-3226' },
+  { code:'TN', name:'Tamil Nadu', type:'State', grievancePortal:'cmcell.tn.gov.in', rtiPortal:'rtionline.tn.gov.in', schemesPortal:'tn.gov.in', ceoPortal:'elections.tn.gov.in', helpline:'1100 (CM Helpline)' },
+  { code:'TS', name:'Telangana', type:'State', grievancePortal:'prajavani.telangana.gov.in', rtiPortal:'rtionline.telangana.gov.in', schemesPortal:'meeseva.telangana.gov.in', ceoPortal:'ceotelangana.nic.in', helpline:'1800-425-1110' },
+  { code:'TR', name:'Tripura', type:'State', grievancePortal:'tripura.gov.in', rtiPortal:'tripura.gov.in', schemesPortal:'tripura.gov.in', ceoPortal:'ceotripura.nic.in', helpline:'1905' },
+  { code:'UP', name:'Uttar Pradesh', type:'State', grievancePortal:'jansunwai.up.nic.in', rtiPortal:'rtionline.up.gov.in', schemesPortal:'up.gov.in', ceoPortal:'ceouttarpradesh.nic.in', helpline:'1076 (CM Helpline)' },
+  { code:'UK', name:'Uttarakhand', type:'State', grievancePortal:'cmhelpline.uk.gov.in', rtiPortal:'uk.gov.in', schemesPortal:'eservices.uk.gov.in', ceoPortal:'ceouttarakhand.nic.in', helpline:'1905 (CM Helpline)' },
+  { code:'WB', name:'West Bengal', type:'State', grievancePortal:'wb.gov.in', rtiPortal:'wb.gov.in', schemesPortal:'wb.gov.in', ceoPortal:'ceowestbengal.nic.in', helpline:'1800-345-0117' },
+  
+  /* 8 Union Territories */
+  { code:'DL', name:'Delhi (NCT)', type:'UT', grievancePortal:'pgms.delhi.gov.in', rtiPortal:'rtionline.delhi.gov.in', schemesPortal:'edistrict.delhigovt.nic.in', ceoPortal:'ceodelhi.gov.in', helpline:'1077 / 1031' },
+  { code:'JK', name:'Jammu & Kashmir', type:'UT', grievancePortal:'jkgrievance.nic.in', rtiPortal:'jkgrievance.nic.in', schemesPortal:'serviceonline.gov.in', ceoPortal:'ceojk.nic.in', helpline:'1800-572-2327' },
+  { code:'LA', name:'Ladakh', type:'UT', grievancePortal:'ladakh.gov.in', rtiPortal:'ladakh.gov.in', schemesPortal:'ladakh.gov.in', ceoPortal:'ceoladakh.gov.in', helpline:'1950' },
+  { code:'CH', name:'Chandigarh', type:'UT', grievancePortal:'chdservices.gov.in', rtiPortal:'chandigarh.gov.in', schemesPortal:'chandigarh.gov.in', ceoPortal:'ceochandigarh.gov.in', helpline:'1800-180-2070' },
+  { code:'PY', name:'Puducherry', type:'UT', grievancePortal:'py.gov.in', rtiPortal:'py.gov.in', schemesPortal:'py.gov.in', ceoPortal:'ceopuducherry.py.gov.in', helpline:'1950' },
+  { code:'DN', name:'Dadra & Nagar Haveli and Daman & Diu', type:'UT', grievancePortal:'daman.nic.in', rtiPortal:'daman.nic.in', schemesPortal:'daman.nic.in', ceoPortal:'ceodaman.nic.in', helpline:'1950' },
+  { code:'AN', name:'Andaman & Nicobar Islands', type:'UT', grievancePortal:'andaman.gov.in', rtiPortal:'andaman.gov.in', schemesPortal:'andaman.gov.in', ceoPortal:'ceoandaman.nic.in', helpline:'1950' },
+  { code:'LD', name:'Lakshadweep', type:'UT', grievancePortal:'lakshadweep.gov.in', rtiPortal:'lakshadweep.gov.in', schemesPortal:'lakshadweep.gov.in', ceoPortal:'ceolakshadweep.gov.in', helpline:'1950' }
+];
+
+/* ==========================================================================
+   3. MULTILINGUAL SUPPORT (14 INDIAN LANGUAGES)
+   ========================================================================== */
+const LANGUAGES = [
+  { code:'en', label:'English', native:'English', speechCode:'en-IN' },
+  { code:'hi', label:'Hindi', native:'हिंदी', speechCode:'hi-IN' },
+  { code:'bn', label:'Bengali', native:'বাংলা', speechCode:'bn-IN' },
+  { code:'te', label:'Telugu', native:'తెలుగు', speechCode:'te-IN' },
+  { code:'mr', label:'Marathi', native:'मराठी', speechCode:'mr-IN' },
+  { code:'ta', label:'Tamil', native:'தமிழ்', speechCode:'ta-IN' },
+  { code:'gu', label:'Gujarati', native:'ગુજરાતી', speechCode:'gu-IN' },
+  { code:'kn', label:'Kannada', native:'ಕನ್ನಡ', speechCode:'kn-IN' },
+  { code:'ml', label:'Malayalam', native:'മലയാളം', speechCode:'ml-IN' },
+  { code:'pa', label:'Punjabi', native:'ਪੰਜਾਬੀ', speechCode:'pa-IN' },
+  { code:'or', label:'Odia', native:'ଓଡ଼ିଆ', speechCode:'or-IN' },
+  { code:'ur', label:'Urdu', native:'اردو', speechCode:'ur-IN' },
+  { code:'as', label:'Assamese', native:'অসমীয়া', speechCode:'as-IN' },
+  { code:'mai', label:'Maithili', native:'मैथिली', speechCode:'hi-IN' }
+];
+
+const I18N = {
+  en: {
+    appTitle: "Sahayak",
+    appSubtitle: "Civic & Welfare AI Assistant",
+    newChat: "New conversation",
+    agents: "Agents",
+    autoRoute: "Auto-route",
+    autoRouteSub: "Picks the right agent",
+    schemeFinder: "Scheme Finder",
+    schemeFinderSub: "Subsidies & benefits",
+    voterInfo: "Election Info",
+    voterInfoSub: "Neutral & sourced",
+    grievance: "Grievance & RTI",
+    grievanceSub: "Stuck applications",
+    browseCat: "Browse by Category",
+    browseCatSub: "For farmers, students, women…",
+    statePortals: "State Directory",
+    statePortalsSub: "Portals for 28 States & 8 UTs",
+    placeholder: "Ask about any scheme, election info, or stuck grievance in your state…",
+    listening: "Listening in your language…",
+    browseHeading: "What do you need assistance with?",
+    browseSub: "Explore welfare schemes, election & voter services, or grievance & RTI guidance.",
+    emptyHeading: "What are you trying to find out?",
+    emptySub: "Ask about a government scheme, constituency, or stuck application across India.",
+    disclaimer: "Sahayak Civic Tech • Built for 28 States & 8 UTs",
+    stateLabel: "State / UT:"
+  },
+  hi: {
+    appTitle: "सहायक",
+    appSubtitle: "नागरिक एवं कल्याणकारी AI सहायक",
+    newChat: "नई बातचीत शुरू करें",
+    agents: "सहायक एजेंट",
+    autoRoute: "स्वतः चयन (Auto)",
+    autoRouteSub: "उचित एजेंट का चयन करता है",
+    schemeFinder: "सरकारी योजनाएं",
+    schemeFinderSub: "सब्सिडी और छात्रवृत्ति",
+    voterInfo: "चुनाव व मतदाता जानकारी",
+    voterInfoSub: "तटस्थ और सत्यापित तथ्य",
+    grievance: "शिकायत एवं आरटीआई (RTI)",
+    grievanceSub: "अटकी हुई अर्जी व शिकायत",
+    browseCat: "सेवाएं एवं योजनाएं",
+    browseCatSub: "योजनाएं, चुनाव, शिकायत व आरटीआई",
+    statePortals: "राज्य पोर्टल निर्देशिका",
+    statePortalsSub: "सभी 28 राज्यों और 8 केंद्र शासित प्रदेश",
+    placeholder: "अपने राज्य में किसी भी योजना, चुनाव या अटकी शिकायत के बारे में पूछें…",
+    listening: "आपकी भाषा में सुन रहे हैं…",
+    browseHeading: "आपको किस सेवा में सहायता चाहिए?",
+    browseSub: "सरकारी योजनाएं, चुनाव व मतदाता सेवाएं, या शिकायत एवं आरटीआई (RTI) चुनें।",
+    emptyHeading: "आप क्या जानना चाहते हैं?",
+    emptySub: "सरकारी योजना, चुनाव उम्मीदवार, या शिकायत निवारण के बारे में पूछें।",
+    disclaimer: "सहायक सिविक टेक • 28 राज्यों और 8 केंद्र शासित प्रदेशों के लिए",
+    stateLabel: "राज्य:"
+  }
+};
+
+/* ==========================================================================
+   4. SYSTEM PROMPTS AWARE OF STATE & LANGUAGE
+   ========================================================================== */
+function getSystemPrompt(agentType, stateCode, langCode){
+  const stateObj = STATES_DIRECTORY.find(s => s.code === stateCode) || STATES_DIRECTORY[0];
+  const langObj = LANGUAGES.find(l => l.code === langCode) || LANGUAGES[0];
+
+  const stateContext = `Selected State/UT: "${stateObj.name}" (Type: ${stateObj.type}).
+Official Portals: 
+- Welfare & Schemes: ${stateObj.schemesPortal} / myscheme.gov.in
+- RTO & Transport: parivahan.gov.in (Sarathi for DL, Vahan for RC, echallan.parivahan.gov.in)
+- Grievance & CM Helpline: ${stateObj.grievancePortal} (Helpline: ${stateObj.helpline})
+- RTI: ${stateObj.rtiPortal}
+- Electoral CEO: ${stateObj.ceoPortal}`;
+
+  const langInstruction = `CRITICAL MULTILINGUAL & SCRIPT DIRECTIVES:
+- Detect the language/script of the user's latest query:
+  - If user writes in Hindi (हिंदी): Reply in clean Hindi.
+  - If user writes in Hinglish (Hindi words in English/Latin letters, e.g. "Kitna age Hona chahie", "Kitna fee lagega", "Kaise apply kare", "Ghar baithe ho sakta hai kya", "Documents kya chahiye"): Reply in clear Hindi (with key terms in English) or clean conversational Hinglish.
+  - If user writes in Marathi, Bengali, Tamil, Telugu, Gujarati, Kannada, Malayalam, Punjabi, Odia, Urdu: Reply in that respective language and script.
+  - If user writes in English: Reply in clean English.
+- If user switches language mid-conversation (e.g. was chatting in English and suddenly asks "Kitna age Hona chahie"), IMMEDIATELY switch response language while PRESERVING 100% OF THE CONVERSATION CONTEXT!`;
+
+  const contextRule = `CRITICAL CROSS-LANGUAGE CONVERSATION CONTINUITY & CONTEXT RULES:
+- ALWAYS check and honor ALL PRIOR MESSAGES in this conversation thread!
+- When the user asks a short follow-up or changes language (e.g. asking "Kitna age Hona chahie", "Kitna paisa lagega", "Documents kya lagenge", "Ghar baithe ho sakta hai kya", "Kitna time lagega", "Online hoga ya offline"):
+  - NEVER ask a clarifying question like "कृपया बताइए आप किस सेवा या योजना के बारे में पूछ रहे हैं" or "Please specify which document/service".
+  - You MUST DIRECTLY and IMMEDIATELY answer the question for the ACTIVE TOPIC previously discussed in this conversation thread!
+  - Examples:
+    * If previous topic is "Driving Licence / Four-Wheeler Licence" and user asks "Kitna age Hona chahie" -> Answer DIRECTLY: "फोर‑व्हीलर (LMV) प्राइवेट ड्राइविंग लाइसेंस के लिए न्यूनतम आयु 18 वर्ष (18 years) होनी चाहिए। (For commercial transport vehicles, it is 20 years)."
+    * If previous topic is "Marriage Certificate" and user asks "can I do from home" -> Answer DIRECTLY about Marriage Certificate online application & registrar appearance.
+    * If previous topic is "Ration Card" and user asks "kitna time lagega" -> Answer DIRECTLY for Ration Card issuing timeline.
+- NEVER divert or reset back to generic schemes (like PM-Kisan or Ayushman Bharat) when a specific topic was already being discussed!`;
+
+  const brevityRule = `CRITICAL FORMAT & BREVITY RULES:
+- Keep responses SHORT, CLEAN, CRISP, and directly actionable (under 250 words).
+- Avoid long introductory fluff or bureaucratic essays.
+- For "How to Apply", write each numbered step on a SINGLE clean line:
+  1. **Step Title**: Direct action and instructions (portal link, fees, requirements).
+  2. **Step Title**: Next action.
+  3. **Step Title**: Final outcome.
+- NEVER split a step's sentence across loose broken lines or unbulleted sub-lines.
+- Structure your answer neatly with clear Markdown sections and emojis:
+  🎯 **Summary** (1-2 crisp sentences)
+  📋 **Eligibility & Required Documents** (2-4 concise bullet points)
+  🔢 **How to Apply** (3-4 numbered steps: 1. 2. 3.)
+  🌐 **Official Portal & Helpline** (${stateObj.schemesPortal} or parivahan.gov.in, Helpline: ${stateObj.helpline})`;
+
+  const basePrompts = {
+    scheme: `You are the "Civic, Scheme & e-Services Agent" in the Sahayak platform in India.
+Your role covers:
+1. Citizen Certificates & Revenue: Marriage Certificate (Hindu/Special Marriage Act via state portal e.g. Aaple Sarkar aaplesarkar.mahaonline.gov.in / IGR igrmaharashtra.gov.in / Municipal Corporation for Maharashtra, edistrict.delhigovt.nic.in for Delhi, edistrict.up.gov.in for UP, Seva Sindhu for Karnataka, etc.), Caste/OBC Non-Creamy Layer, Domicile/Residence, Income Certificate, Birth/Death on CRS (crsorgi.gov.in), Land records 7/12 (Bhulekh / Mahabhulekh / Patta / Jamabandi), Legal Heir.
+2. EPFO, Pension & ESIC: EPF online withdrawal & advances (Form 19, 10C, 31 on unifiedportal-mem.epfindia.gov.in), UAN activation & Passbook (passbook.epfindia.gov.in), Jeevan Pramaan Digital Life Certificate for pensioners (jeevanpramaan.gov.in Face RD app), ESIC medical care & 26-week maternity cash benefits (esic.gov.in).
+3. Taxes, ITR & GST: Income Tax Return (ITR-1/ITR-4, new tax regime zero tax up to ₹7.75L with standard deduction, refund tracking on eportal.incometax.gov.in), GST registration & Composition scheme for small traders on gst.gov.in.
+4. Utilities & Municipal Services: New electricity meter connection & solar net-metering with state DISCOM, property tax payment, property mutation (Namantaran/name transfer), and Trade License / Shops & Establishment (Gumasta) registration.
+5. RTO & Transport Services: Learner's License with faceless Aadhaar test, Driving License, DL renewal, RC transfer Form 29/30, Hypothecation removal Form 35, HSRP number plates, e-Challan payment on parivahan.gov.in.
+6. Welfare Schemes & Subsidies: PM-Kisan, Ayushman Bharat, PMAY, Mudra, Ladli / Lakhpati Didi, NSP Scholarships on myscheme.gov.in.
+
+${contextRule}
+${stateContext}
+${langInstruction}
+${brevityRule}`,
+
+    voter: `You are the "Voter & Election Info Agent" in Sahayak.
+Your goal is to provide strictly neutral, concise, factual election and voter registration guidance in India.
+${contextRule}
+${stateContext}
+${langInstruction}
+${brevityRule}
+- For procedures (voter ID Form 6, checking roll, Form 8 correction), use a simple 3-step numbered list.
+- Cite authoritative portals (ECI eci.gov.in, CEO ${stateObj.ceoPortal}).`,
+
+    grievance: `You are the "Grievance & RTI Agent" in Sahayak.
+Your goal is to give citizens a direct, simple roadmap to resolve delayed or rejected government services or file an RTI.
+${contextRule}
+${stateContext}
+${langInstruction}
+${brevityRule}
+- Provide 3-4 numbered escalation steps (Step 1: Department, Step 2: ${stateObj.grievancePortal} / CPGRAMS pgportal.gov.in, Step 3: RTI / Ombudsman).
+- Mention the helpline (${stateObj.helpline}) and ₹10 RTI fee.`
+  };
+
+  return basePrompts[agentType] || basePrompts.scheme;
+}
+
+const SCHEME_KEYWORDS = [
+  'scheme','yojana','subsidy','pm-kisan','pmkisan','ayushman','msme','mudra','loan','scholarship','pension','ration card','pmay','beneficiary','eligib','sarkari','ujjwala','kisan','anganwadi','ews','bpl','welfare',
+  'epf','epfo','pf','provident fund','uan','passbook','jeevan pramaan','life certificate','esic','esi','itr','income tax','tax return','tax slab','gst','composition scheme','electricity meter','electricity connection','bijli meter','property tax','mutation','namantaran','gumasta','trade license',
+  'rto','license','licence','dl','rc','parivahan','sarathi','vahan','challan','hsrp','number plate','fitness','vehicle','driving','learner','hypothecation',
+  'caste','domicile','income certificate','marriage certificate','birth certificate','death certificate','e-seva','eseva','csc','edistrict','7/12','patta','jamabandi','bhulekh','khata','legal heir','succession','certificate','praman patra',
+  'योजना','सब्सिडी','छात्रवृत्ति','पेंशन','राशन','प्रमाण पत्र','जाति','निवास','आय','विवाह','ड्राइविंग','आरटीओ','आरसी','चालान','पीएफ','ईपीएफओ','यूएएन','जीवन प्रमाण','ईएसआईसी','आईटीआर','आयकर','जीएसटी','बिजली कनेक्शन','प्रॉपर्टी टैक्स','दाखिल खारिज','गुमाश्ता'
+];
+const VOTER_KEYWORDS = ['candidate','election','mla','mp','constituency','vote','voter','manifesto','pincode','pin code','ward','assembly','lok sabha','vidhan sabha','ballot','eci','parliament','sitting mla','sitting mp','contest','उम्मीदवार','चुनाव','वोट','मतदाता','विधायक','सांसद'];
+const GRIEVANCE_KEYWORDS = ['complaint','grievance','rti','right to information','cpgrams','rejected','reject','not received','delay','delayed','escalate','appeal','ombudsman','redressal','application status','not approved','denied','stuck','no response','follow up','followup','pending since','pgportal','jansunwai','spandana','शिकायत','आरटीआई','अटकी','पेंडिंग'];
+
+function routeAgent(text){
+  const t = text.toLowerCase();
+  let s = 0, v = 0, g = 0;
+  SCHEME_KEYWORDS.forEach(k=>{ if(t.includes(k)) s++; });
+  VOTER_KEYWORDS.forEach(k=>{ if(t.includes(k)) v++; });
+  GRIEVANCE_KEYWORDS.forEach(k=>{ if(t.includes(k)) g++; });
+  if(s === 0 && v === 0 && g === 0) return null;
+  if(g >= s && g >= v) return 'grievance';
+  return s >= v ? 'scheme' : 'voter';
+}
+
+if(typeof marked !== 'undefined' && marked.setOptions){
+  marked.setOptions({
+    gfm: true,
+    breaks: false
+  });
+}
+
+function cleanThinkingTags(text){
+  if(!text) return '';
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
+function renderMarkdown(text){
+  const clean = cleanThinkingTags(text);
+  if(typeof marked !== 'undefined' && marked.parse){
+    try {
+      const raw = marked.parse(clean || '');
+      if(typeof DOMPurify !== 'undefined' && DOMPurify.sanitize){
+        return { __html: DOMPurify.sanitize(raw) };
+      }
+      return { __html: raw };
+    } catch(e){}
+  }
+  return { __html: (clean || '').replace(/\n/g, '<br/>') };
+}
+
+const AGENT_META = {
+  scheme:    { label:'Scheme Finder',   icon:'leaf',   color:'scheme' },
+  voter:     { label:'Election Info',   icon:'ballot', color:'voter' },
+  grievance: { label:'Grievance & RTI', icon:'doc',    color:'grievance' },
+  auto:      { label:'Sahayak',         icon:'sparkle',color:'auto' }
+};
+
+const CATEGORIES = [
+  // 1. WELFARE SCHEMES (agent: 'scheme', type: 'welfare')
+  { id:'farmers', agent:'scheme', type:'welfare', label:'Farmers & Agriculture', icon:'leaf', blurb:'PM-Kisan, crop insurance, fertilizers, solar pumps',
+    prompt:"What are the major central and state government schemes, subsidies, and loan programs available for farmers? Give details on eligibility and how to apply." },
+  { id:'students', agent:'scheme', type:'welfare', label:'Students & Education', icon:'cap', blurb:'National scholarships, fee waivers, study loans',
+    prompt:"What are the major government scholarships, education loan subsidies, and skill training programs available for students? Give eligibility and portal links." },
+  { id:'women', agent:'scheme', type:'welfare', label:'Women & Maternity', icon:'heart', blurb:'Lakhpati Didi, Ladli, maternity cash, Ujjwala',
+    prompt:"What are the major government schemes for women empowerment, maternity financial assistance, and self-help groups? Give details on how to apply." },
+  { id:'seniors', agent:'scheme', type:'welfare', label:'Senior Citizens', icon:'shield', blurb:'Old age pension, health cover, rail/travel aids',
+    prompt:"What are the major government pension schemes, healthcare benefits, and support programs available for senior citizens?" },
+  { id:'disability', agent:'scheme', type:'welfare', label:'Persons with Disabilities (PwD)', icon:'access', blurb:'UDID, assistive aids, disability pension',
+    prompt:"What are the major government schemes, disability pensions, equipment subsidies, and job reservations available for persons with disabilities (PwD)?" },
+  { id:'workers', agent:'scheme', type:'welfare', label:'Unorganised Workers & Labour', icon:'hammer', blurb:'e-Shram, construction boards, accidental cover',
+    prompt:"What are the major welfare schemes for unorganised sector workers, daily-wage labourers, and gig workers (e-Shram, PM-SYM, BOCW)?" },
+  { id:'business', agent:'scheme', type:'welfare', label:'Small Business & MSME', icon:'briefcase', blurb:'Mudra loans, PM-Vishwakarma, PMEGP subsidy',
+    prompt:"What are the major government loan subsidies and startup/MSME programs available for small business owners and artisans (Mudra, PMEGP, Vishwakarma)?" },
+  { id:'housing', agent:'scheme', type:'welfare', label:'Housing & Urban Welfare', icon:'home', blurb:'PMAY pucca house subsidy, rural sanitation',
+    prompt:"What are the major government housing subsidy schemes (Pradhan Mantri Awas Yojana - Urban and Rural) for building or purchasing a house?" },
+  { id:'general', agent:'scheme', type:'welfare', label:'General Citizen & BPL', icon:'users', blurb:'Ration card, Ayushman Bharat, Jan Dhan, Aadhaar',
+    prompt:"What are the major foundational welfare schemes available to every citizen/BPL family, covering food security, free healthcare (Ayushman), and banking?" },
+
+  // 2. IDENTITY & ESSENTIAL CITIZEN DOCUMENTS (agent: 'scheme', type: 'identity')
+  { id:'doc-aadhaar', agent:'scheme', type:'identity', label:'Aadhaar Services (UIDAI)', icon:'idCard', blurb:'Update address/mobile online, download e-Aadhaar, order PVC card & lock biometrics',
+    prompt:"How do I update my address or phone number in Aadhaar online (UIDAI), order an official PVC card, or lock/unlock my biometric details?" },
+  { id:'doc-pan', agent:'scheme', type:'identity', label:'PAN Card & Aadhaar Link', icon:'fileCheck', blurb:'Apply for instant e-PAN, link PAN-Aadhaar, correct details & reprint lost PAN',
+    prompt:"How do I apply for an instant e-PAN card (free on Income Tax portal), link PAN with Aadhaar, or request a reprint for a damaged/lost PAN card?" },
+  { id:'doc-passport', agent:'scheme', type:'identity', label:'Passport Seva & Tatkaal', icon:'globe', blurb:'Fresh passport, Tatkaal appointment, renewal & police verification on passportindia.gov.in',
+    prompt:"How do I apply for a fresh or renewal Passport (Normal / Tatkaal) on Passport Seva (passportindia.gov.in)? Give appointment booking steps, required documents, and fees." },
+  { id:'doc-ration', agent:'scheme', type:'identity', label:'Ration Card & ONORC Portability', icon:'home', blurb:'Apply for new ration card, add family members & One Nation One Ration Card benefit',
+    prompt:"How do I apply for a new Ration Card, add or remove a family member, and use One Nation One Ration Card (ONORC) for ration in any state?" },
+  { id:'doc-ayushman', agent:'scheme', type:'identity', label:'Ayushman Card & ABHA Health ID', icon:'heart', blurb:'Download Ayushman Bharat ₹5 Lakh health card & create 14-digit ABHA ID',
+    prompt:"How do I check eligibility and download the Ayushman Card (PM-JAY ₹5 Lakh cashless treatment) and generate my ABHA digital health account number?" },
+  { id:'doc-solar', agent:'scheme', type:'identity', label:'PM Surya Ghar (Free Solar Subsidy)', icon:'sparkle', blurb:'Rooftop solar installation subsidy (up to ₹78,000 grant) on pmsuryaghar.gov.in',
+    prompt:"How do I apply for the PM Surya Ghar: Muft Bijli Yojana rooftop solar subsidy (up to ₹78,000 grant) on pmsuryaghar.gov.in? Give eligibility, net metering, and savings." },
+
+  // 3. RTO & TRANSPORT SERVICES (agent: 'scheme', type: 'rto')
+  { id:'rto-license', agent:'scheme', type:'rto', label:"Learner's & Driving License", icon:'idCard', blurb:"Apply for Learner's License online (faceless Aadhaar test), Permanent DL booking, DL Renewal",
+    prompt:"How do I apply for a Learner's License online without visiting RTO (faceless Aadhaar test) and book a permanent Driving License test on Sarathi Parivahan? Give eligibility, fees, and documents." },
+  { id:'rto-rc-transfer', agent:'scheme', type:'rto', label:'Vehicle RC Transfer & Ownership', icon:'car', blurb:'Buyer-seller vehicle transfer (Form 29/30), NOC & transfer fee',
+    prompt:"How do I transfer vehicle ownership (RC Transfer) when buying or selling a used vehicle in India? Provide step-by-step procedure on Vahan Parivahan, Form 29 & 30 requirements, and fees." },
+  { id:'rto-echallan', agent:'scheme', type:'rto', label:'Traffic e-Challan & HSRP Plate', icon:'alert', blurb:'Pay traffic police fines online & book High Security Number Plate (HSRP)',
+    prompt:"How do I check and pay traffic police e-challans online (echallan.parivahan.gov.in) and order a High Security Registration Plate (HSRP) with laser sticker for my vehicle?" },
+  { id:'rto-hypothecation', agent:'scheme', type:'rto', label:'Loan Removal & Duplicate RC', icon:'fileCheck', blurb:'Remove bank hypothecation (Form 35), duplicate RC & address change',
+    prompt:"How do I remove bank hypothecation (loan clearance Form 35) from my vehicle RC book and apply for a duplicate RC if lost on Vahan Parivahan?" },
+  { id:'rto-fitness-noc', agent:'scheme', type:'rto', label:'Vehicle Fitness, NOC & Permits', icon:'shield', blurb:'Inter-state NOC (Form 28), vehicle fitness renewal, green tax & permits',
+    prompt:"How do I get an inter-state NOC (Form 28) to transfer my vehicle to another state, and how do I renew commercial vehicle fitness certificates?" },
+
+  // 3. e-SEVA KENDRA & CITIZEN CERTIFICATES (agent: 'scheme', type: 'eseva')
+  { id:'eseva-caste', agent:'scheme', type:'eseva', label:'Caste & Non-Creamy Layer / EWS', icon:'fileCheck', blurb:'SC/ST/OBC non-creamy layer & EWS certificate via e-District / Tahsil',
+    prompt:"How do I apply for a Caste Certificate (SC/ST/OBC Non-Creamy Layer) or Economically Weaker Section (EWS) certificate online or at a CSC/e-Seva Kendra? Give documents, eligibility, and fees." },
+  { id:'eseva-domicile', agent:'scheme', type:'eseva', label:'Domicile / Residence Certificate', icon:'home', blurb:'Proof of residence / nativity certificate for admissions & jobs',
+    prompt:"How do I obtain a Domicile / Residence / Nativity Certificate in my state? What are the proof of residence requirements (10/15 years rule), required documents, and processing timeline?" },
+  { id:'eseva-income', agent:'scheme', type:'eseva', label:'Income & Asset Certificate', icon:'briefcase', blurb:'Family income verification for scholarships, fee waivers & subsidies',
+    prompt:"How do I apply for an official Income Certificate from the Revenue Department / Tahsildar? What documents are required to prove family income, and what is its validity period?" },
+  { id:'eseva-marriage', agent:'scheme', type:'eseva', label:'Marriage Registration Certificate', icon:'heart', blurb:'Hindu Marriage Act & Special Marriage Act online registration & witness rules',
+    prompt:"How do I register a marriage and get an official Marriage Certificate in India? Explain online appointment booking, documents, witness requirements (3 witnesses), and court procedure." },
+  { id:'eseva-birth-death', agent:'scheme', type:'eseva', label:'Birth & Death Certificate (CRS)', icon:'fileText', blurb:'Registration within 21 days on crsorgi.gov.in / Municipal portal & late approval',
+    prompt:"How do I apply for a Birth or Death Certificate online on the Civil Registration System (crsorgi.gov.in) or municipal portal? What is the procedure if registration is delayed beyond 21 days?" },
+  { id:'eseva-land-records', agent:'scheme', type:'eseva', label:'Land Records (7/12, Patta, Bhulekh)', icon:'map', blurb:'Download signed Record of Rights (RoR), 7/12 extract, Patta/Khata & EC',
+    prompt:"How do citizens view, search, and download certified land records (7/12 extract, Patta, Khata, Jamabandi, Bhulekh, Encumbrance Certificate) online in their state?" },
+  { id:'eseva-legal-heir', agent:'scheme', type:'eseva', label:'Legal Heir & Succession Certificate', icon:'users', blurb:'Surviving family member certificate for property transfer & bank settlement',
+    prompt:"How do I apply for a Legal Heir Certificate (Surviving Member Certificate) or Succession Certificate after the death of a family member? What are the required documents and inquiry process?" },
+
+  // 4. EPFO, TAX & UTILITIES (agent: 'scheme', type: 'worktax')
+  { id:'worktax-epfo-claim', agent:'scheme', type:'worktax', label:'EPF Withdrawal & Advance (Form 19/31)', icon:'briefcase', blurb:'Claim PF online, illness/housing advance (Form 31), final PF (Form 19) & pension (Form 10C)',
+    prompt:"How do I withdraw or apply for an advance from my EPF (Provident Fund) balance online on the EPFO Member Portal (unifiedportal-mem.epfindia.gov.in)? Provide eligibility rules, Form 19, 10C, and 31 claim steps, and documents." },
+  { id:'worktax-uan-passbook', agent:'scheme', type:'worktax', label:'UAN Activation & PF Passbook', icon:'fileCheck', blurb:'Activate UAN, check PF balance, passbook & link Aadhaar/bank account',
+    prompt:"How do I activate my UAN (Universal Account Number), download my EPF Member Passbook to check PF balance (passbook.epfindia.gov.in), and update my KYC (Aadhaar & Bank)?" },
+  { id:'worktax-jeevan-pramaan', agent:'scheme', type:'worktax', label:'Jeevan Pramaan (Digital Life Certificate)', icon:'shield', blurb:'Submit annual pensioner life certificate from home using Face RD app without bank visit',
+    prompt:"How do pensioners generate and submit a Digital Life Certificate (Jeevan Pramaan) from home using the Aadhaar Face RD mobile app (jeevanpramaan.gov.in) without visiting the bank?" },
+  { id:'worktax-esic', agent:'scheme', type:'worktax', label:'ESIC Medical & Maternity Benefits', icon:'heart', blurb:'Free hospital treatment & 26 weeks paid maternity for employees earning under ₹21,000/mo',
+    prompt:"Who is eligible for ESIC (Employees' State Insurance) healthcare benefits (wage under ₹21,000/month)? How do workers access ESIC dispensaries, free hospitalization, and claim 26 weeks of paid maternity leave?" },
+  { id:'worktax-itr-refund', agent:'scheme', type:'worktax', label:'Income Tax Return (ITR) & Refund', icon:'fileText', blurb:'File ITR online, new tax slabs (zero tax up to ₹7.75L) & track tax refund status',
+    prompt:"Who is required to file an Income Tax Return (ITR) in India? Explain the new tax regime (zero tax up to ₹7.75 Lakh with standard deduction), ITR-1 / ITR-4 filing steps on eportal.incometax.gov.in, and checking refund status." },
+  { id:'worktax-gst', agent:'scheme', type:'worktax', label:'GST Registration for Small Traders', icon:'briefcase', blurb:'Apply for 15-digit GSTIN, Composition Scheme (1% tax) & threshold exemption limits on gst.gov.in',
+    prompt:"How do small shopkeepers and startups apply for GST registration on gst.gov.in? What are the turnover exemption limits (₹40L for goods, ₹20L for services) and benefits of the GST Composition Scheme (1% tax)?" },
+  { id:'worktax-electricity', agent:'scheme', type:'worktax', label:'New Electricity Connection & Net Meter', icon:'sparkle', blurb:'Apply for domestic/commercial electricity meter with state DISCOM & solar net-metering',
+    prompt:"How do I apply for a new domestic or commercial electricity connection/meter online with my state DISCOM? Provide required documents (ownership/rent proof), load calculation, and installation process." },
+  { id:'worktax-property-trade', agent:'scheme', type:'worktax', label:'Property Tax, Mutation & Trade License', icon:'home', blurb:'Pay municipal property tax online, transfer name (Namantaran/Mutation) & get shop license',
+    prompt:"How do citizens pay municipal property tax online, apply for property Mutation (Namantaran / name transfer in municipal records after purchase), and obtain a Trade License / Shops & Establishment (Gumasta) certificate?" },
+
+  // 5. VOTER & ELECTION SERVICES (agent: 'voter', type: 'voter')
+  { id:'voter-reg', agent:'voter', type:'voter', label:'New Voter ID (Form 6)', icon:'userCheck', blurb:'Apply for new Voter ID card online & track status',
+    prompt:"How do I register as a new voter and apply for a Voter ID card (Form 6) online? Provide eligibility criteria, required documents, and step-by-step portal instructions." },
+  { id:'electoral-roll', agent:'voter', type:'voter', label:'Check Name in Voter List', icon:'search', blurb:'Find polling station, booth number & EPIC details',
+    prompt:"How do I verify if my name is on the electoral roll and find my polling booth, assembly constituency, and EPIC number online?" },
+  { id:'candidate-check', agent:'voter', type:'voter', label:'Candidate Affidavits & Records', icon:'shield', blurb:'Verify candidate criminal records, assets & education',
+    prompt:"How can citizens check candidate affidavits, declared criminal cases, assets, and education background on the ECI / Know Your Candidate portal before voting?" },
+  { id:'voter-correction', agent:'voter', type:'voter', label:'Update Address & Details (Form 8)', icon:'ballot', blurb:'Change constituency, address, photo, or name',
+    prompt:"How do I shift my address, change constituency, or correct my name/photo on my Voter ID card using Form 8?" },
+  { id:'first-time-voter', agent:'voter', type:'voter', label:'First-Time & Student Voters', icon:'cap', blurb:'Guidelines for youth (18+), students & NRI voters',
+    prompt:"What are the voting guidelines, registration rules, and special provisions for first-time 18+ voters, college students staying in hostels, and NRI voters?" },
+
+  // 5. GRIEVANCE, RTI & CITIZEN RIGHTS (agent: 'grievance', type: 'grievance')
+  { id:'file-rti', agent:'grievance', type:'grievance', label:'File an RTI Application', icon:'fileText', blurb:'Draft ₹10 RTI request for government records or delays',
+    prompt:"How do I file an RTI (Right to Information) application for delayed government work or official documents? Give step-by-step procedure, ₹10 fee rules, and a sample drafted format." },
+  { id:'delayed-service', agent:'grievance', type:'grievance', label:'Stuck / Delayed Services', icon:'alert', blurb:'Escalate pending ration card, pension, or certificate',
+    prompt:"My government application (ration card, certificate, pension, or subsidy) has been delayed for months without updates. How do I escalate and resolve it?" },
+  { id:'cpgrams-helpline', agent:'grievance', type:'grievance', label:'CPGRAMS & CM Helpline Redressal', icon:'doc', blurb:'Lodge complaints on central & state grievance portals',
+    prompt:"How do I lodge an official public grievance on CPGRAMS or the state CM grievance portal? Give step-by-step instructions and tracking details." },
+  { id:'rti-appeal', agent:'grievance', type:'grievance', label:'RTI First & Second Appeals', icon:'scale', blurb:'Action when RTI is rejected or unanswered after 30 days',
+    prompt:"What should I do if my RTI request is rejected, unanswered after 30 days, or incomplete? How do I file a First Appeal and Second Appeal to the Information Commission?" },
+  { id:'legal-aid', agent:'grievance', type:'grievance', label:'Free Legal Aid & Ombudsman', icon:'scale', blurb:'NALSA/DLSA free lawyers, banking & utility ombudsman',
+    prompt:"Who is eligible for free legal aid in India under NALSA/DLSA, and how can citizens lodge complaints with banking, insurance, and electricity ombudsman?" }
+];
+
+/* ==========================================================================
+   5. MULTI-PROVIDER & MULTI-MODEL AUTO-FAILOVER ENGINE
+   ========================================================================== */
+async function callProviderAPI(provider, key, model, systemPrompt, userHistory){
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...userHistory
+  ];
+
+  if(provider === 'groq'){
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key.trim()}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 800
+      })
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.choices[0]?.message?.content || '';
+  }
+
+  if(provider === 'nvidia'){
+    const resp = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key.trim()}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 800
+      })
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.choices[0]?.message?.content || '';
+  }
+
+  if(provider === 'openrouter'){
+    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key.trim()}`,
+        'HTTP-Referer': window.location.origin || 'https://sahayak.app',
+        'X-Title': 'Sahayak Civic Assistant'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 800
+      })
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.choices[0]?.message?.content || '';
+  }
+
+  if(provider === 'gemini'){
+    const cleanModel = model || 'gemini-2.0-flash';
+    const contents = [];
+    userHistory.forEach(m => {
+      const role = m.role === 'assistant' ? 'model' : 'user';
+      if(contents.length > 0 && contents[contents.length - 1].role === role){
+        contents[contents.length - 1].parts[0].text += `\n\n${m.content}`;
+      } else {
+        contents.push({ role, parts: [{ text: m.content }] });
+      }
+    });
+    if(contents.length === 0 || contents[0].role !== 'user'){
+      contents.unshift({ role: 'user', parts: [{ text: 'Hello' }] });
+    }
+
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${key.trim()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: contents,
+        generationConfig: { maxOutputTokens: 800, temperature: 0.3 }
+      })
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  }
+
+  if(provider === 'openai' || provider === 'grok' || provider === 'deepseek'){
+    const endpoints = {
+      openai: 'https://api.openai.com/v1/chat/completions',
+      grok: 'https://api.x.ai/v1/chat/completions',
+      deepseek: 'https://api.deepseek.com/v1/chat/completions'
+    };
+    const resp = await fetch(endpoints[provider], {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key.trim()}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 800
+      })
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.choices[0]?.message?.content || '';
+  }
+
+  if(provider === 'claude'){
+    const normalizedHistory = [];
+    userHistory.forEach(m => {
+      const role = m.role === 'assistant' ? 'assistant' : 'user';
+      if(normalizedHistory.length > 0 && normalizedHistory[normalizedHistory.length - 1].role === role){
+        normalizedHistory[normalizedHistory.length - 1].content += `\n\n${m.content}`;
+      } else {
+        normalizedHistory.push({ role, content: m.content });
+      }
+    });
+    if(normalizedHistory.length === 0 || normalizedHistory[0].role !== 'user'){
+      normalizedHistory.unshift({ role: 'user', content: 'Hello' });
+    }
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key.trim(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: model || 'claude-3-7-sonnet-20250219',
+        system: systemPrompt,
+        messages: normalizedHistory,
+        max_tokens: 800
+      })
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.content?.[0]?.text || '';
+  }
+
+  throw new Error(`Unknown provider: ${provider}`);
+}
+
+function extractCitations(text, stateObj){
+  const citations = [];
+  const domainRegex = /(https?:\/\/[^\s\)\>\]"'`]+)/gi;
+  const matches = text.match(domainRegex) || [];
+  const seen = new Set();
+  matches.forEach(rawUrl => {
+    let cleanUrl = rawUrl.replace(/[,\.\)\*\>\]"':]+$/, '').trim();
+    if(!seen.has(cleanUrl) && cleanUrl.startsWith('http')){
+      seen.add(cleanUrl);
+      try{
+        const parsed = new URL(cleanUrl);
+        if(parsed.hostname && parsed.hostname.includes('.')){
+          citations.push({ url: cleanUrl, title: parsed.hostname });
+        }
+      }catch(e){}
+    }
+  });
+
+  if(citations.length === 0 && stateObj){
+    citations.push({ url: `https://${stateObj.grievancePortal}`, title: `${stateObj.name} Grievance Portal` });
+    citations.push({ url: `https://${stateObj.schemesPortal}`, title: `${stateObj.name} Citizen Services` });
+  }
+  return citations;
+}
+
+/* ==========================================================================
+   6. MAIN REACT APP COMPONENT
+   ========================================================================== */
+function App(){
+  const [tab, setTab] = useState('auto');
+  const [view, setView] = useState('browse'); // 'browse' | 'chat' | 'directory'
+  const [browseFilter, setBrowseFilter] = useState('all');
+  const [selectedState, setSelectedState] = useState('ALL');
+  const [selectedLang, setSelectedLang] = useState('en');
+  const [histories, setHistories] = useState({scheme:[], voter:[], grievance:[]});
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [pending, setPending] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [agentsExpanded, setAgentsExpanded] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(() => Date.now());
+  const [listening, setListening] = useState(false);
+  const [liveVoiceActive, setLiveVoiceActive] = useState(false);
+  const [liveVoiceStatus, setLiveVoiceStatus] = useState('idle');
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState(null);
+  const [micError, setMicError] = useState(null);
+  const [speakingIndex, setSpeakingIndex] = useState(null);
+  const [voices, setVoices] = useState([]);
+  const [selectedVoiceGender, setSelectedVoiceGender] = useState('female'); // 'female' | 'male' | 'auto'
+
+  const logRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const liveVoiceRef = useRef(false);
+  liveVoiceRef.current = liveVoiceActive;
+
+  useEffect(()=>{
+    if(typeof window === 'undefined' || !window.speechSynthesis) return;
+    function loadVoices(){
+      const list = window.speechSynthesis.getVoices() || [];
+      setVoices(list);
+    }
+    loadVoices();
+    if(window.speechSynthesis.onvoiceschanged !== undefined){
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
+  function pickBestVoice(dialectCode, genderPref){
+    if(!voices || voices.length === 0) return null;
+    const langPrefix = (dialectCode || 'en').split('-')[0].toLowerCase();
+    const langMatches = voices.filter(v => v.lang && v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+    const pool = langMatches.length > 0 ? langMatches : voices;
+
+    if(genderPref === 'female'){
+      const femaleKeywords = ['female', 'woman', 'swara', 'heera', 'neerja', 'kalpana', 'zira', 'jenny', 'samantha', 'victoria', 'google'];
+      const femVoice = pool.find(v => femaleKeywords.some(k => v.name.toLowerCase().includes(k)));
+      if(femVoice) return femVoice;
+    } else if(genderPref === 'male'){
+      const maleKeywords = ['male', 'man', 'ravi', 'rishi', 'hemant', 'david', 'george', 'mark'];
+      const maleVoice = pool.find(v => maleKeywords.some(k => v.name.toLowerCase().includes(k)));
+      if(maleVoice) return maleVoice;
+    }
+
+    return pool[0] || null;
+  }
+
+  function copyMessageText(index, text){
+    if(!navigator.clipboard) return;
+    const cleanText = stripForSpeech(text);
+    navigator.clipboard.writeText(cleanText).then(()=>{
+      setCopiedIndex(index);
+      setTimeout(()=>setCopiedIndex(null), 2000);
+    }).catch(()=>{});
+  }
+
+  const speechRecSupported = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const speechSupported = typeof window !== 'undefined' && !!window.speechSynthesis;
+
+  useEffect(()=>{
+    if(logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [messages, loading]);
+
+  function detectStateInText(text, currentStateCode){
+    if(!text) return currentStateCode;
+    const t = text.toLowerCase();
+    for(const s of STATES_DIRECTORY){
+      if(s.code !== 'ALL' && (t.includes(s.name.toLowerCase()) || t.includes(`in ${s.code.toLowerCase()}`))){
+        return s.code;
+      }
+    }
+    return currentStateCode;
+  }
+
+  /* Multi-Key & Multi-Model Dispatcher with True Multi-Turn Context & Auto-Failover */
+  async function dispatchLLM(agentType, userText, priorMessages = []){
+    const historyTurns = priorMessages.map(m => ({
+      role: m.who === 'user' ? 'user' : 'assistant',
+      content: m.text
+    }));
+    const newHistory = [...historyTurns, { role:'user', content: userText }];
+
+    // Auto-detect state if explicitly mentioned by user in the query
+    const effectiveState = detectStateInText(userText, selectedState);
+    const systemPrompt = getSystemPrompt(agentType, effectiveState, selectedLang);
+    const stateObj = STATES_DIRECTORY.find(s => s.code === effectiveState) || STATES_DIRECTORY[0];
+
+    const cfg = window.SAHAYAK_CONFIG || {};
+    const groqModels = cfg.GROQ_MODELS || ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "deepseek-r1-distill-llama-70b", "qwen/qwen3.6-27b"];
+    const nvidiaModels = cfg.NVIDIA_MODELS || ["meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct", "meta/llama-3.1-8b-instruct", "mistralai/mistral-large-2-instruct"];
+    const orModels = cfg.OPENROUTER_MODELS || ["openrouter/free", "nvidia/nemotron-3.5-lightning:free", "google/gemma-4-31b-it:free"];
+    const geminiModels = cfg.GEMINI_MODELS || ["gemini-2.0-flash", "gemini-1.5-flash"];
+
+    const providerKeyMap = {
+      groq: { keys: (cfg.GROQ_KEYS || []).filter(Boolean), models: groqModels },
+      nvidia: { keys: (cfg.NVIDIA_KEYS || []).filter(Boolean), models: nvidiaModels },
+      openrouter: { keys: (cfg.OPENROUTER_KEYS || []).filter(Boolean), models: orModels },
+      gemini: { keys: (cfg.GEMINI_KEYS || []).filter(Boolean), models: geminiModels },
+      openai: { keys: (cfg.OPENAI_KEYS || []).filter(Boolean), models: ['gpt-4o-mini'] },
+      claude: { keys: (cfg.CLAUDE_KEYS || []).filter(Boolean), models: ['claude-3-7-sonnet-20250219'] },
+      grok: { keys: (cfg.GROK_KEYS || []).filter(Boolean), models: ['grok-2-latest'] },
+      deepseek: { keys: (cfg.DEEPSEEK_KEYS || []).filter(Boolean), models: ['deepseek-chat'] }
+    };
+
+    const order = cfg.PROVIDER_ORDER || ['groq', 'nvidia', 'openrouter', 'gemini', 'openai', 'claude', 'grok', 'deepseek'];
+    const availableProviders = order.filter(p => providerKeyMap[p]?.keys.length > 0);
+
+    // If no keys configured in config.js yet
+    if(availableProviders.length === 0){
+      return {
+        text: `### 🏛️ Sahayak Civic Assistant
+Welcome! To activate the AI response engine, please configure your free API keys in the \`config.js\` file.`,
+        citations: []
+      };
+    }
+
+    // Try providers in priority order with model and key fallbacks
+    for(const prov of availableProviders){
+      const { keys, models } = providerKeyMap[prov];
+      for(let keyIdx = 0; keyIdx < keys.length; keyIdx++){
+        const key = keys[keyIdx];
+        for(let modelIdx = 0; modelIdx < models.length; modelIdx++){
+          const model = models[modelIdx];
+          try {
+            const responseText = await callProviderAPI(prov, key, model, systemPrompt, newHistory);
+            const cleanedText = cleanThinkingTags(responseText);
+
+            setHistories(prev => ({
+              ...prev,
+              [agentType]: [...newHistory, { role:'assistant', content: cleanedText }]
+            }));
+
+            const citations = extractCitations(cleanedText, stateObj);
+            return { text: cleanedText, citations };
+          } catch(err) {
+            console.warn(`[Failover] ${prov} (Model: ${model}, Key: ${keyIdx + 1}) failed: ${err.message}. Rotating...`);
+          }
+        }
+      }
+    }
+
+    return {
+      text: "The civic assistance engine is currently experiencing high network volume across all providers. Please try again in a moment.",
+      citations: []
+    };
+  }
+
+  async function sendText(rawText, overrideAgent){
+    const text = rawText.trim();
+    if(!text || loading) return;
+    setView('chat');
+
+    let agentType = overrideAgent;
+    if(!agentType){
+      const routed = routeAgent(text);
+      if(routed){
+        agentType = routed;
+      } else if(messages.length > 0){
+        const lastAgentMsg = [...messages].reverse().find(m => m.who === 'agent');
+        agentType = lastAgentMsg?.agent || 'scheme';
+      } else {
+        agentType = 'scheme';
+      }
+    }
+
+    const priorSnapshot = [...messages];
+    setMessages(prev => [...prev, { who:'user', text }]);
+    setInput('');
+    setPending(null);
+
+    setLoading(true);
+    const result = await dispatchLLM(agentType, text, priorSnapshot);
+    setMessages(prev => [...prev, { who:'agent', agent: agentType, text: result.text, citations: result.citations }]);
+    setLoading(false);
+  }
+
+  function browseCategory(cat){
+    const stateObj = STATES_DIRECTORY.find(s => s.code === selectedState) || STATES_DIRECTORY[0];
+    const customizedPrompt = `${cat.prompt} Focus specifically on programs available for citizens in ${stateObj.name} and Central Government.`;
+    sendText(customizedPrompt, cat.agent || 'scheme');
+  }
+
+  function handleSend(){ sendText(input); }
+
+  function choosePendingAgent(agentType){
+    const text = pending;
+    setPending(null);
+    setLoading(true);
+    const priorSnapshot = [...messages];
+    dispatchLLM(agentType, text, priorSnapshot).then(result => {
+      setMessages(prev => [...prev, { who:'agent', agent: agentType, text: result.text, citations: result.citations }]);
+      setLoading(false);
+    });
+  }
+
+  function onKeyDown(e){
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  function deriveTitle(msgs){
+    const firstUser = msgs.find(m => m.who === 'user');
+    if(!firstUser) return 'New conversation';
+    return firstUser.text.length > 34 ? firstUser.text.slice(0, 34) + '…' : firstUser.text;
+  }
+
+  // Keep all sessions updated in real-time
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const title = deriveTitle(messages);
+    setSessions(prev => {
+      const idx = prev.findIndex(s => s.id === currentSessionId);
+      const updated = { id: currentSessionId, title, messages, histories, updatedAt: Date.now() };
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updated;
+        return copy;
+      }
+      return [updated, ...prev];
+    });
+  }, [messages, histories, currentSessionId]);
+
+  function newConversation(){
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    setSpeakingIndex(null);
+    setMessages([]);
+    setHistories({scheme:[], voter:[], grievance:[]});
+    setPending(null);
+    setInput('');
+    setView('browse');
+    setCurrentSessionId(Date.now());
+  }
+
+  function openSession(sessionId){
+    if(sessionId === currentSessionId){
+      setView('chat');
+      return;
+    }
+    const target = sessions.find(s => s.id === sessionId);
+    if(!target) return;
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    setSpeakingIndex(null);
+    setCurrentSessionId(target.id);
+    setMessages(target.messages || []);
+    setHistories(target.histories || {scheme:[], voter:[], grievance:[]});
+    setPending(null);
+    setView('chat');
+  }
+
+  function deleteSession(e, sessionId){
+    e.stopPropagation();
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if(sessionId === currentSessionId){
+      newConversation();
+    }
+  }
+
+  /* ==========================================================================
+     LIVE VOICE CONVERSATION ENGINE (HANDS-FREE DUPLEX LOOP)
+     ========================================================================== */
+  function stripForSpeech(text){
+    return (text || '')
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/[*_#>~-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function stopLiveVoice(){
+    setLiveVoiceActive(false);
+    liveVoiceRef.current = false;
+    setLiveVoiceStatus('idle');
+    setListening(false);
+    if(recognitionRef.current){
+      try { recognitionRef.current.abort(); } catch(e){}
+    }
+    if(window.speechSynthesis){
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingIndex(null);
+  }
+
+  function startLiveVoice(){
+    if(!speechRecSupported){
+      alert("Voice recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+      return;
+    }
+    setView('chat');
+    setLiveVoiceActive(true);
+    liveVoiceRef.current = true;
+    setLiveVoiceStatus('listening');
+    listenForLiveVoice();
+  }
+
+  function listenForLiveVoice(){
+    if(!liveVoiceRef.current) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRecognition) return;
+
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    setSpeakingIndex(null);
+
+    const langObj = LANGUAGES.find(l => l.code === selectedLang) || LANGUAGES[0];
+    const recognition = new SpeechRecognition();
+    recognition.lang = langObj.speechCode || 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setListening(true);
+      setLiveVoiceStatus('listening');
+      setMicError(null);
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = (e.results[0]?.[0]?.transcript || '').trim();
+      if(!transcript) return;
+      
+      const stopWords = ['stop', 'end', 'exit', 'cancel', 'stop voice', 'stop listening', 'रुको', 'बंद करो', 'समाप्त', 'खत्म करो', 'थांब', 'நிறுத்து', 'ఆపు', 'നിർത്തുക'];
+      const isStop = stopWords.some(w => transcript.toLowerCase().includes(w));
+      
+      if(isStop){
+        stopLiveVoice();
+        return;
+      }
+
+      handleLiveVoiceInput(transcript);
+    };
+
+    recognition.onerror = (e) => {
+      setListening(false);
+      if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        setMicError("Microphone access blocked. Please allow mic permission in browser address bar.");
+        stopLiveVoice();
+      } else if((e.error === 'no-speech' || e.error === 'network') && liveVoiceRef.current){
+        // Automatically keep listening if user paused or no speech detected yet
+        setTimeout(()=>{
+          if(liveVoiceRef.current && !window.speechSynthesis?.speaking) listenForLiveVoice();
+        }, 500);
+      }
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+    } catch(e){}
+  }
+
+  async function handleLiveVoiceInput(rawText){
+    let userText = (rawText || '').trim();
+    if(!userText) return;
+
+    // Wake word detection & greeting handling
+    const wakePhrases = [
+      'hi sahayak', 'hello sahayak', 'hey sahayak', 'namaste sahayak', 'sun sahayak', 'suno sahayak',
+      'नमस्ते सहायक', 'सुनो सहायक', 'हाय सहायक', 'हेलो सहायक'
+    ];
+
+    let isOnlyWakeWord = false;
+    for(const wp of wakePhrases){
+      if(userText.toLowerCase() === wp || userText.toLowerCase() === 'sahayak' || userText === 'सहायक'){
+        isOnlyWakeWord = true;
+        break;
+      }
+      if(userText.toLowerCase().startsWith(wp)){
+        userText = userText.slice(wp.length).replace(/^[,.:\s]+/, '').trim();
+        break;
+      }
+    }
+
+    setView('chat');
+
+    // If citizen just said "Hi Sahayak" / greeting
+    if(isOnlyWakeWord || !userText){
+      const greeting = selectedLang === 'hi' 
+        ? "नमस्ते! मैं सहायक हूँ। बताइए आज मैं आपकी क्या सहायता करूँ?" 
+        : "Namaste! I am Sahayak, your civic assistant. How can I help you today?";
+      setMessages(prev => [
+        ...prev, 
+        { who:'user', text: rawText },
+        { who:'agent', agent: 'auto', text: greeting, citations: [] }
+      ]);
+
+      if(liveVoiceRef.current && autoSpeak && speechSupported){
+        setLiveVoiceStatus('speaking');
+        speakLiveResponse(greeting);
+      } else if(liveVoiceRef.current){
+        setLiveVoiceStatus('listening');
+        setTimeout(()=>{
+          if(liveVoiceRef.current) listenForLiveVoice();
+        }, 500);
+      }
+      return;
+    }
+
+    let agentType = tab === 'auto' 
+      ? (routeAgent(userText) || (messages.length > 0 ? (([...messages].reverse().find(m => m.who === 'agent')?.agent) || 'scheme') : 'scheme')) 
+      : tab;
+
+    const priorSnapshot = [...messages];
+    setMessages(prev => [...prev, { who:'user', text: userText }]);
+    setPending(null);
+    setLiveVoiceStatus('thinking');
+
+    setLoading(true);
+    const result = await dispatchLLM(agentType, userText, priorSnapshot);
+    const newAgentMsg = { who:'agent', agent: agentType, text: result.text, citations: result.citations };
+    setMessages(prev => [...prev, newAgentMsg]);
+    setLoading(false);
+
+    // If autoSpeak is enabled, read the response aloud completely and then re-arm mic.
+    // If autoSpeak is disabled, do NOT read response, and immediately listen for user's next input!
+    if(liveVoiceRef.current){
+      if(autoSpeak && speechSupported){
+        setLiveVoiceStatus('speaking');
+        speakLiveResponse(result.text);
+      } else {
+        setLiveVoiceStatus('listening');
+        setTimeout(()=>{
+          if(liveVoiceRef.current) listenForLiveVoice();
+        }, 600);
+      }
+    }
+  }
+
+  function detectSpeechDialect(text, defaultCode = 'en-IN'){
+    if(!text) return defaultCode;
+    if(/[\u0900-\u097F]/.test(text)) return 'hi-IN'; // Devanagari (Hindi, Marathi, Maithili)
+    if(/[\u0980-\u09FF]/.test(text)) return 'bn-IN'; // Bengali, Assamese
+    if(/[\u0B80-\u0BFF]/.test(text)) return 'ta-IN'; // Tamil
+    if(/[\u0C00-\u0C7F]/.test(text)) return 'te-IN'; // Telugu
+    if(/[\u0C80-\u0CFF]/.test(text)) return 'kn-IN'; // Kannada
+    if(/[\u0D00-\u0D7F]/.test(text)) return 'ml-IN'; // Malayalam
+    if(/[\u0A80-\u0AFF]/.test(text)) return 'gu-IN'; // Gujarati
+    if(/[\u0A00-\u0A7F]/.test(text)) return 'pa-IN'; // Punjabi
+    if(/[\u0B00-\u0B7F]/.test(text)) return 'or-IN'; // Odia
+    if(/[\u0600-\u06FF]/.test(text)) return 'ur-IN'; // Urdu
+    return defaultCode;
+  }
+
+  function speakLiveResponse(text){
+    if(!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    const cleanText = stripForSpeech(text);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const langObj = LANGUAGES.find(l => l.code === selectedLang) || LANGUAGES[0];
+    const dialectCode = detectSpeechDialect(cleanText, langObj.speechCode || 'en-IN');
+    utterance.lang = dialectCode;
+
+    const chosenVoice = pickBestVoice(dialectCode, selectedVoiceGender);
+    if(chosenVoice){
+      utterance.voice = chosenVoice;
+    }
+
+    utterance.onend = () => {
+      setSpeakingIndex(null);
+      if(liveVoiceRef.current){
+        setLiveVoiceStatus('listening');
+        setTimeout(()=>{
+          if(liveVoiceRef.current) listenForLiveVoice();
+        }, 500);
+      } else {
+        setLiveVoiceStatus('idle');
+      }
+    };
+
+    utterance.onerror = () => {
+      setSpeakingIndex(null);
+      if(liveVoiceRef.current){
+        setTimeout(()=>{
+          if(liveVoiceRef.current) listenForLiveVoice();
+        }, 500);
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  /* Standard One-Time Mic Input */
+  function startListening(){
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRecognition) return;
+    const langObj = LANGUAGES.find(l => l.code === selectedLang) || LANGUAGES[0];
+    
+    const recognition = new SpeechRecognition();
+    recognition.lang = langObj.speechCode || 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (e) => {
+      const transcript = (e.results[0][0].transcript || '').trim();
+      const wakeWords = ['hi sahayak', 'hello sahayak', 'hey sahayak', 'namaste sahayak', 'नमस्ते सहायक'];
+      const hasWake = wakeWords.some(w => transcript.toLowerCase().includes(w));
+      if(hasWake){
+        startLiveVoice();
+      } else {
+        setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+      }
+    };
+    recognition.onerror = (e) => {
+      setListening(false);
+      if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        setMicError("Microphone access blocked. Please allow mic permission in your browser address bar.");
+      } else {
+        setMicError(`Voice error: ${e.error}`);
+      }
+    };
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    setMicError(null);
+    recognition.start();
+    setListening(true);
+  }
+
+  function stopListening(){
+    if(recognitionRef.current) recognitionRef.current.stop();
+    setListening(false);
+  }
+
+  function toggleSpeak(index, text){
+    if(!window.speechSynthesis) return;
+    if(speakingIndex === index){
+      window.speechSynthesis.cancel();
+      setSpeakingIndex(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const cleanText = stripForSpeech(text);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const langObj = LANGUAGES.find(l => l.code === selectedLang) || LANGUAGES[0];
+    const dialectCode = detectSpeechDialect(cleanText, langObj.speechCode || 'en-IN');
+    utterance.lang = dialectCode;
+
+    const chosenVoice = pickBestVoice(dialectCode, selectedVoiceGender);
+    if(chosenVoice){
+      utterance.voice = chosenVoice;
+    }
+
+    utterance.onend = () => setSpeakingIndex(null);
+    utterance.onerror = () => setSpeakingIndex(null);
+    window.speechSynthesis.speak(utterance);
+    setSpeakingIndex(index);
+  }
+
+  const currentMeta = AGENT_META[tab] || AGENT_META.auto;
+  const currentLangText = I18N[selectedLang] || I18N.en;
+  const activeStateObj = STATES_DIRECTORY.find(s => s.code === selectedState) || STATES_DIRECTORY[0];
+
+  return (
+    <React.Fragment>
+      <div className="bg-blobs"><span className="b1"></span><span className="b2"></span><span className="b3"></span></div>
+
+      {/* Mobile Drawer Backdrop */}
+      <div 
+        className={`sidebar-backdrop ${sidebarOpen ? 'mobile-open' : ''}`} 
+        onClick={()=>setSidebarOpen(false)}
+      ></div>
+
+      {/* Sidebar */}
+      <div className={`sidebar ${sidebarOpen ? 'mobile-open' : ''}`}>
+        <div className="brand">
+          <div className="brand-mark"><Icon.flag s={18}/></div>
+          <div>
+            <div className="brand-name">{currentLangText.appTitle}</div>
+            <div className="brand-sub">{currentLangText.appSubtitle}</div>
+          </div>
+        </div>
+
+        <button className="new-chat-btn" onClick={()=>{ newConversation(); setSidebarOpen(false); }}>
+          <Icon.plus s={14}/> {currentLangText.newChat}
+        </button>
+
+        {/* Recent Chats directly below New Conversation */}
+        {sessions.length > 0 && (
+          <React.Fragment>
+            <div className="nav-label">Recent Chats</div>
+            <div className="recent-list">
+              {sessions.map(s => (
+                <div 
+                  key={s.id} 
+                  className={`recent-item ${s.id===currentSessionId?'active':''}`} 
+                  onClick={()=>{ openSession(s.id); setSidebarOpen(false); }}
+                  title={s.title}
+                >
+                  <span className="recent-title">{s.title}</span>
+                  <button 
+                    className="delete-chat-btn" 
+                    onClick={(e)=>deleteSession(e, s.id)}
+                    title="Delete conversation"
+                  >
+                    <Icon.close s={11}/>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </React.Fragment>
+        )}
+
+        <div className="nav-label" style={{marginTop: sessions.length > 0 ? 8 : 0}}>Discover</div>
+        <div className={`nav-item ${view==='browse'?'active':''}`} onClick={()=>{ setView('browse'); setSidebarOpen(false); }}>
+          <div className="nav-icon" style={{background:'linear-gradient(135deg,var(--saffron),var(--green))', color:'#fff'}}><Icon.grid s={15}/></div>
+          <div className="nav-item-meta">{currentLangText.browseCat}<span className="nav-item-sub">{currentLangText.browseCatSub}</span></div>
+        </div>
+        <div className={`nav-item ${view==='directory'?'active':''}`} onClick={()=>{ setView('directory'); setSidebarOpen(false); }}>
+          <div className="nav-icon portals"><Icon.map s={15}/></div>
+          <div className="nav-item-meta">{currentLangText.statePortals}<span className="nav-item-sub">{currentLangText.statePortalsSub}</span></div>
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-disclaimer">{currentLangText.disclaimer}</div>
+        </div>
+      </div>
+
+      {/* Main Area */}
+      <div className="main">
+        {/* Topbar */}
+        <div className="topbar">
+          <div className="topbar-left">
+            <button className="mobile-menu-btn" onClick={()=>setSidebarOpen(v=>!v)} title="Open navigation menu">
+              <Icon.grid s={16}/>
+            </button>
+            <div className="mode">
+              {view === 'browse' ? (
+                <React.Fragment>
+                  <div className="mode-icon" style={{background:'linear-gradient(135deg,var(--saffron),var(--green))'}}><Icon.grid s={14}/></div>
+                  {currentLangText.browseCat}
+                </React.Fragment>
+              ) : view === 'directory' ? (
+                <React.Fragment>
+                  <div className="mode-icon" style={{background:'var(--chakra)'}}><Icon.map s={14}/></div>
+                  {currentLangText.statePortals} (28 States &amp; 8 UTs)
+                </React.Fragment>
+              ) : (
+                <React.Fragment>
+                  <div className="mode-icon auto"><Icon.sparkle s={14}/></div>
+                  Sahayak Civic Assistant
+                </React.Fragment>
+              )}
+            </div>
+          </div>
+
+          <div className="topbar-right">
+            {/* State Selector */}
+            <div className="select-dropdown" title="Select your State/UT for localized schemes & grievance portals">
+              <Icon.map s={13}/>
+              <select value={selectedState} onChange={e=>setSelectedState(e.target.value)}>
+                {STATES_DIRECTORY.map(s => (
+                  <option key={s.code} value={s.code}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Language Selector */}
+            <div className="select-dropdown" title="Select Response Language (English default)">
+              <Icon.globe s={13}/>
+              <select value={selectedLang} onChange={e=>setSelectedLang(e.target.value)}>
+                {LANGUAGES.map(l => (
+                  <option key={l.code} value={l.code}>{l.native} ({l.label})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Voice Type Selector */}
+            {speechSupported && (
+              <div className="select-dropdown" title="Select Read Aloud Voice (Female / Male / System)">
+                <Icon.speaker s={13}/>
+                <select value={selectedVoiceGender} onChange={e=>setSelectedVoiceGender(e.target.value)}>
+                  <option value="female">👩 Female Voice</option>
+                  <option value="male">👨 Male Voice</option>
+                  <option value="auto">🌐 System Voice</option>
+                </select>
+              </div>
+            )}
+
+            <div className="status-pill"><span className="status-dot"></span>Live AI Grounding</div>
+          </div>
+        </div>
+
+        {/* View 1: Browse Category */}
+        {view === 'browse' ? (
+          <div className="chat-scroll">
+            <div className="browse-inner">
+              <div className="browse-heading">
+                <h2>{currentLangText.browseHeading}</h2>
+                <p>{currentLangText.browseSub} (Showing for: <strong>{activeStateObj.name}</strong>)</p>
+              </div>
+
+              {/* Service Filter Tabs */}
+              <div className="browse-filter-row">
+                <button className={`filter-pill ${browseFilter==='all'?'active':''}`} onClick={()=>setBrowseFilter('all')}>
+                  🌟 All Services ({CATEGORIES.length})
+                </button>
+                <button className={`filter-pill scheme ${browseFilter==='welfare'?'active':''}`} onClick={()=>setBrowseFilter('welfare')}>
+                  <Icon.leaf s={14}/> Welfare Schemes ({CATEGORIES.filter(c=>c.type==='welfare').length})
+                </button>
+                <button className={`filter-pill identity ${browseFilter==='identity'?'active':''}`} onClick={()=>setBrowseFilter('identity')}>
+                  <Icon.idCard s={14}/> Identity &amp; Docs ({CATEGORIES.filter(c=>c.type==='identity').length})
+                </button>
+                <button className={`filter-pill rto ${browseFilter==='rto'?'active':''}`} onClick={()=>setBrowseFilter('rto')}>
+                  <Icon.car s={14}/> RTO &amp; Transport ({CATEGORIES.filter(c=>c.type==='rto').length})
+                </button>
+                <button className={`filter-pill eseva ${browseFilter==='eseva'?'active':''}`} onClick={()=>setBrowseFilter('eseva')}>
+                  <Icon.fileCheck s={14}/> e-Seva &amp; Certificates ({CATEGORIES.filter(c=>c.type==='eseva').length})
+                </button>
+                <button className={`filter-pill worktax ${browseFilter==='worktax'?'active':''}`} onClick={()=>setBrowseFilter('worktax')}>
+                  <Icon.briefcase s={14}/> EPFO, Tax &amp; Utilities ({CATEGORIES.filter(c=>c.type==='worktax').length})
+                </button>
+                <button className={`filter-pill voter ${browseFilter==='voter'?'active':''}`} onClick={()=>setBrowseFilter('voter')}>
+                  <Icon.ballot s={14}/> Election &amp; Voter ({CATEGORIES.filter(c=>c.type==='voter').length})
+                </button>
+                <button className={`filter-pill grievance ${browseFilter==='grievance'?'active':''}`} onClick={()=>setBrowseFilter('grievance')}>
+                  <Icon.doc s={14}/> Grievance &amp; RTI ({CATEGORIES.filter(c=>c.type==='grievance').length})
+                </button>
+              </div>
+
+              <div className="category-grid">
+                {CATEGORIES.filter(c => browseFilter === 'all' || c.type === browseFilter).map(cat => (
+                  <div className="category-card" key={cat.id} onClick={()=>browseCategory(cat)}>
+                    <div className="category-card-top">
+                      <div className={`category-icon ${cat.type || 'scheme'}`}>{getIcon(cat.icon, {s:20})}</div>
+                      <span className={`category-badge ${cat.type || 'scheme'}`}>
+                        {cat.type === 'identity' ? 'Identity & Doc' :
+                         cat.type === 'rto' ? 'RTO Transport' :
+                         cat.type === 'eseva' ? 'e-Seva / Certificate' :
+                         cat.type === 'worktax' ? 'EPFO, Tax & Utilities' :
+                         cat.type === 'voter' ? 'Election' :
+                         cat.type === 'grievance' ? 'Grievance / RTI' : 'Welfare'}
+                      </span>
+                    </div>
+                    <div className="category-label">{cat.label}</div>
+                    <div className="category-blurb">{cat.blurb}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : view === 'directory' ? (
+          /* View 2: All 28 States & 8 UTs Directory */
+          <div className="chat-scroll">
+            <div className="directory-container">
+              <div className="directory-hero">
+                <div>
+                  <h2>Official Portals of All 28 States &amp; 8 UTs</h2>
+                  <p>Direct official links for Grievance Redressal, RTI, e-District welfare services, and State Electoral Officers.</p>
+                </div>
+                <button className="new-chat-btn" style={{width:'auto', margin:0, whiteSpace:'nowrap'}} onClick={()=>setView('chat')}>
+                  Ask Assistant →
+                </button>
+              </div>
+              <div className="state-cards-grid">
+                {STATES_DIRECTORY.map(s => (
+                  <div className="state-card" key={s.code}>
+                    <div className="state-card-header">
+                      <span className="state-card-title">{s.name}</span>
+                      <span className="state-badge">{s.type}</span>
+                    </div>
+                    <div className="state-links">
+                      <div className="state-link-row">
+                        <span>e-District / Services:</span>
+                        <a href={`https://${s.schemesPortal}`} target="_blank" rel="noopener noreferrer">
+                          {s.schemesPortal} <Icon.external s={11}/>
+                        </a>
+                      </div>
+                      <div className="state-link-row">
+                        <span>RTO Parivahan:</span>
+                        <a href="https://parivahan.gov.in" target="_blank" rel="noopener noreferrer">
+                          parivahan.gov.in <Icon.external s={11}/>
+                        </a>
+                      </div>
+                      <div className="state-link-row">
+                        <span>Grievance Portal:</span>
+                        <a href={`https://${s.grievancePortal}`} target="_blank" rel="noopener noreferrer">
+                          {s.grievancePortal} <Icon.external s={11}/>
+                        </a>
+                      </div>
+                      <div className="state-link-row">
+                        <span>RTI Portal:</span>
+                        <a href={`https://${s.rtiPortal}`} target="_blank" rel="noopener noreferrer">
+                          {s.rtiPortal} <Icon.external s={11}/>
+                        </a>
+                      </div>
+                      <div className="state-link-row">
+                        <span>Helpline:</span>
+                        <span className="helpline-chip">{s.helpline}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* View 3: Chat Stream */
+          <div className="chat-scroll" ref={logRef}>
+            <div className="chat-inner">
+              {messages.length === 0 && !pending && (
+                <div className="empty-state">
+                  <div className="empty-icon"><Icon.sparkle s={26}/></div>
+                  <h2>{currentLangText.emptyHeading}</h2>
+                  <p>{currentLangText.emptySub} State: <strong>{activeStateObj.name}</strong></p>
+                  <div className="suggestion-grid">
+                    <div className="suggestion-card" onClick={()=>sendText(`I am a farmer in ${activeStateObj.name}, what central and state subsidies can I get?`)}>
+                      <span className="suggestion-tag scheme">Welfare</span>
+                      "What subsidies and schemes are available in {activeStateObj.name}?"
+                    </div>
+                    <div className="suggestion-card" onClick={()=>sendText(`How do I apply for a Learner's License and transfer vehicle RC in ${activeStateObj.name}?`)}>
+                      <span className="suggestion-tag voter" style={{background:'rgba(20,80,163,0.12)', color:'var(--chakra)'}}>RTO Transport</span>
+                      "How do I apply for a Learner's License &amp; RC transfer?"
+                    </div>
+                    <div className="suggestion-card" onClick={()=>sendText(`How do I apply for a Domicile and Caste Certificate in ${activeStateObj.name}?`)}>
+                      <span className="suggestion-tag scheme" style={{background:'rgba(142,68,173,0.12)', color:'#8E44AD'}}>e-Seva Kendra</span>
+                      "How do I get Domicile, Caste &amp; Income certificates?"
+                    </div>
+                    <div className="suggestion-card" onClick={()=>sendText(`My ration card or certificate application has been delayed for 2 months in ${activeStateObj.name}`)}>
+                      <span className="suggestion-tag grievance">Grievance</span>
+                      "My application is pending for 2 months in {activeStateObj.name}"
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {messages.map((m, i) => (
+                m.who === 'user' ? (
+                  <div className="msg user" key={i}>
+                    <div className="msg-avatar user"><Icon.user s={14}/></div>
+                    <div className="msg-card">{m.text}</div>
+                  </div>
+                ) : (
+                  <div className="msg" key={i}>
+                    <div className="msg-avatar auto"><Icon.sparkle s={15}/></div>
+                    <div className="msg-card">
+                      <div dangerouslySetInnerHTML={renderMarkdown(m.text)} />
+                      <div className="msg-card-bottom">
+                        <Sources citations={m.citations} />
+                        <div className="msg-actions-row">
+                          <button
+                            className={`card-action-btn ${copiedIndex===i?'copied':''}`}
+                            onClick={()=>copyMessageText(i, m.text)}
+                            title="Copy answer to clipboard"
+                          >
+                            {copiedIndex===i ? (
+                              <React.Fragment><Icon.userCheck s={12}/> <span>Copied!</span></React.Fragment>
+                            ) : (
+                              <React.Fragment><Icon.doc s={12}/> <span>Copy</span></React.Fragment>
+                            )}
+                          </button>
+                          {speechSupported && (
+                            <button 
+                              className={`speak-btn ${speakingIndex===i?'speaking':''}`} 
+                              onClick={()=>toggleSpeak(i, m.text)} 
+                              title={speakingIndex===i ? 'Stop reading' : 'Read aloud in selected language'}
+                            >
+                              {speakingIndex===i ? (
+                                <React.Fragment><Icon.close s={12}/> <span>Stop</span></React.Fragment>
+                              ) : (
+                                <React.Fragment><Icon.speaker s={13}/> <span>Read Aloud</span></React.Fragment>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              ))}
+
+              {loading && (
+                <div className="msg">
+                  <div className="msg-avatar auto"><Icon.sparkle s={14}/></div>
+                  <div className="typing-card">
+                    <div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Composer */}
+        <div className="composer">
+          <div className="composer-inner">
+            {micError && (
+              <div className="mic-error">
+                {micError}
+                <button onClick={()=>setMicError(null)}><Icon.close s={11}/></button>
+              </div>
+            )}
+            <div className="input-shell">
+              <button
+                className={`mic-btn ${listening && !liveVoiceActive ? 'listening' : ''}`}
+                onClick={listening ? stopListening : startListening}
+                title={speechRecSupported ? (listening ? 'Stop listening' : `Type by Voice in ${LANGUAGES.find(l=>l.code===selectedLang)?.label}`) : 'Speech recognition not supported'}
+                disabled={!speechRecSupported}
+              >
+                <Icon.mic s={16}/>
+              </button>
+              <textarea
+                placeholder={listening ? (liveVoiceActive ? "🎙️ Live Mode active... Speak naturally (Say 'Stop' to end)" : currentLangText.listening) : (liveVoiceActive ? "Live Voice ON... Speak or type your message" : currentLangText.placeholder)}
+                value={input}
+                onChange={e=>setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                rows={1}
+              />
+              <div className="composer-actions">
+                {speechRecSupported && (
+                  <button
+                    className={`action-icon-btn ${liveVoiceActive ? 'live-active' : ''}`}
+                    onClick={liveVoiceActive ? stopLiveVoice : startLiveVoice}
+                    title={liveVoiceActive ? "Live Voice Active (Tap to stop)" : "Live Voice Agent: Continuous Hands-Free Mode (Say 'Hi Sahayak')"}
+                    disabled={!speechRecSupported}
+                  >
+                    {liveVoiceActive ? <span className="live-dot-pulse"></span> : <Icon.radioLive s={16}/>}
+                  </button>
+                )}
+                {speechSupported && (
+                  <button
+                    className={`action-icon-btn ${autoSpeak ? 'auto-speak-active' : 'auto-speak-muted'}`}
+                    onClick={()=>setAutoSpeak(!autoSpeak)}
+                    title={autoSpeak ? "Spoken Responses: ON (Assistant reads answers aloud)" : "Spoken Responses: MUTED (Silent voice mode - no reading aloud)"}
+                    disabled={!speechSupported}
+                  >
+                    {autoSpeak ? <Icon.speaker s={16}/> : <Icon.speakerMute s={16}/>}
+                  </button>
+                )}
+                <button className="send-btn" onClick={handleSend} disabled={loading || !input.trim()} title="Send message">
+                  <Icon.send s={16}/>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+function Sources({citations}){
+  if(!citations || citations.length === 0) return null;
+  return (
+    <div className="sources-row">
+      {citations.map((c,i)=>(
+        <a key={i} className="source-chip" href={c.url} target="_blank" rel="noopener noreferrer" title={c.title || c.url}>
+          {c.title || c.url}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
