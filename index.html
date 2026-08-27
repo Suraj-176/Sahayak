@@ -28,6 +28,8 @@
     })();
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <!-- Local Configuration & Key Registry -->
+  <script src="config.js"></script>
 
   <style>
     :root{
@@ -1240,13 +1242,14 @@ function App(){
     }
 
     // 2. Direct fallback for Local PC (file://) or Standalone execution
-    const localGroqKeys = [
+    const cfg = window.SAHAYAK_CONFIG || {};
+    const localGroqKeys = (cfg.GROQ_KEYS && cfg.GROQ_KEYS.length > 0) ? cfg.GROQ_KEYS : [
       "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",
       "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",
       "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",
       "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"
     ];
-    const localGroqModels = ["openai/gpt-oss-120b", "groq/compound", "qwen/qwen3.6-27b", "groq/compound-mini", "openai/gpt-oss-20b"];
+    const localGroqModels = (cfg.GROQ_MODELS && cfg.GROQ_MODELS.length > 0) ? cfg.GROQ_MODELS : ["openai/gpt-oss-120b", "groq/compound", "qwen/qwen3.6-27b", "groq/compound-mini", "openai/gpt-oss-20b"];
 
     for (const key of localGroqKeys) {
       for (const model of localGroqModels) {
@@ -1264,13 +1267,28 @@ function App(){
     }
 
     // 3. Local fallback for OpenRouter
-    const localOrKeys = [
+    const localOrKeys = (cfg.OPENROUTER_KEYS && cfg.OPENROUTER_KEYS.length > 0) ? cfg.OPENROUTER_KEYS : [
       "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",
       "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"
     ];
     for (const key of localOrKeys) {
       try {
         const responseText = await callProviderAPI('openrouter', key, 'openrouter/free', systemPrompt, newHistory);
+        if (responseText) {
+          const cleanedText = cleanThinkingTags(responseText);
+          const citations = extractCitations(cleanedText, stateObj);
+          return { text: cleanedText, citations };
+        }
+      } catch (e) {}
+    }
+
+    // 4. Local fallback for NVIDIA NIM
+    const localNvidiaKeys = (cfg.NVIDIA_KEYS && cfg.NVIDIA_KEYS.length > 0) ? cfg.NVIDIA_KEYS : [
+      "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"
+    ];
+    for (const key of localNvidiaKeys) {
+      try {
+        const responseText = await callProviderAPI('nvidia', key, 'deepseek-ai/deepseek-v4-flash-0731', systemPrompt, newHistory);
         if (responseText) {
           const cleanedText = cleanThinkingTags(responseText);
           const citations = extractCitations(cleanedText, stateObj);
