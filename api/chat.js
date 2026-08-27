@@ -53,20 +53,34 @@ export default async function handler(req, res) {
     ? messages[messages.length - 1]?.content 
     : '';
 
-  // Log user activity to Vercel Serverless Logs
-  console.log('[USER_ACTIVITY]', JSON.stringify({
+  const logEntry = {
     timestamp,
     ip: clientIp,
-    location: {
-      city,
-      region,
-      country,
-      coordinates: latitude && longitude ? `${latitude}, ${longitude}` : undefined
-    },
+    city,
+    region,
+    country,
+    coordinates: latitude && longitude ? `${latitude}, ${longitude}` : 'N/A',
     device: userAgent,
     query: userQuery,
     provider: activeProvider
-  }));
+  };
+
+  // Store in global memory for /api/logs?format=csv export
+  global.SESSION_LOGS = global.SESSION_LOGS || [];
+  global.SESSION_LOGS.unshift(logEntry);
+  if (global.SESSION_LOGS.length > 1000) global.SESSION_LOGS.pop();
+
+  // Log user activity to Vercel Serverless Logs
+  console.log('[USER_ACTIVITY]', JSON.stringify(logEntry));
+
+  // Optional: If you configured LOG_WEBHOOK_URL (Google Sheet / Discord / Webhook), send real-time row
+  if (process.env.LOG_WEBHOOK_URL) {
+    fetch(process.env.LOG_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logEntry)
+    }).catch(() => {});
+  }
 
   const formattedMessages = [
     { role: 'system', content: systemPrompt },
