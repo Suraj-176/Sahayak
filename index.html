@@ -1214,26 +1214,67 @@ function App(){
     const systemPrompt = getSystemPrompt(agentType, effectiveState, selectedLang);
     const stateObj = STATES_DIRECTORY.find(s => s.code === effectiveState) || STATES_DIRECTORY[0];
 
-    // Call secure Serverless Backend (/api/chat)
-    const provList = ['groq', 'nvidia', 'openrouter', 'gemini'];
-    for(const prov of provList){
+    // 1. If hosted on Vercel / Web server, use secure /api/chat
+    if (window.location.protocol && window.location.protocol.startsWith('http')) {
+      for (const prov of ['groq', 'openrouter', 'nvidia']) {
+        try {
+          const sResp = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: prov,
+              systemPrompt: systemPrompt,
+              messages: newHistory
+            })
+          });
+          const sData = await sResp.json().catch(() => ({}));
+          if (sData && sData.text) {
+            const cleanedText = cleanThinkingTags(sData.text);
+            const citations = extractCitations(cleanedText, stateObj);
+            return { text: cleanedText, citations };
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 2. Direct fallback for Local PC (file://) or Standalone execution
+    const localGroqKeys = [
+      "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",
+      "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",
+      "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",
+      "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"
+    ];
+    const localGroqModels = ["openai/gpt-oss-120b", "groq/compound", "qwen/qwen3.6-27b", "groq/compound-mini", "openai/gpt-oss-20b"];
+
+    for (const key of localGroqKeys) {
+      for (const model of localGroqModels) {
+        try {
+          const responseText = await callProviderAPI('groq', key, model, systemPrompt, newHistory);
+          if (responseText) {
+            const cleanedText = cleanThinkingTags(responseText);
+            const citations = extractCitations(cleanedText, stateObj);
+            return { text: cleanedText, citations };
+          }
+        } catch (err) {
+          console.warn(`[Local Failover] Groq model ${model} failed:`, err.message);
+        }
+      }
+    }
+
+    // 3. Local fallback for OpenRouter
+    const localOrKeys = [
+      "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",
+      "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"
+    ];
+    for (const key of localOrKeys) {
       try {
-        const sResp = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: prov,
-            systemPrompt: systemPrompt,
-            messages: newHistory
-          })
-        });
-        const sData = await sResp.json().catch(()=>({}));
-        if(sData && sData.text){
-          const cleanedText = cleanThinkingTags(sData.text);
+        const responseText = await callProviderAPI('openrouter', key, 'openrouter/free', systemPrompt, newHistory);
+        if (responseText) {
+          const cleanedText = cleanThinkingTags(responseText);
           const citations = extractCitations(cleanedText, stateObj);
           return { text: cleanedText, citations };
         }
-      } catch(e){}
+      } catch (e) {}
     }
 
     return {
