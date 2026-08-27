@@ -94,157 +94,79 @@ export default async function handler(req, res) {
     ...(messages || [])
   ];
 
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    try {
-      if (activeProvider === 'groq') {
-        const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
+  // Provider configuration with verified active models
+  const providerPools = [
+    {
+      id: 'groq',
+      endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+      models: ['openai/gpt-oss-120b', 'groq/compound', 'qwen/qwen3.6-27b', 'groq/compound-mini', 'openai/gpt-oss-20b'],
+      keys: (envKeyMap.groq || '').split(/[\n,]+/).map(k => k.trim()).filter(Boolean)
+    },
+    {
+      id: 'openrouter',
+      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      models: ['openrouter/free', 'nvidia/nemotron-3.5-lightning:free', 'google/gemma-4-31b-it:free'],
+      keys: (envKeyMap.openrouter || '').split(/[\n,]+/).map(k => k.trim()).filter(Boolean)
+    },
+    {
+      id: 'nvidia',
+      endpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
+      models: ['deepseek-ai/deepseek-v4-flash-0731', 'google/gemma-4-31b-it', 'ibm/granite-3.0-8b-instruct'],
+      keys: (envKeyMap.nvidia || '').split(/[\n,]+/).map(k => k.trim()).filter(Boolean)
+    }
+  ];
+
+  // Try providers in priority order
+  for (const prov of providerPools) {
+    if (!prov.keys || prov.keys.length === 0) continue;
+
+    for (const key of prov.keys) {
+      for (const mId of prov.models) {
+        try {
+          const headers = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: model || 'openai/gpt-oss-120b',
-            messages: formattedMessages,
-            temperature: 0.3,
-            max_tokens: 1200
-          })
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.error?.message || `HTTP ${resp.status}`);
-        }
-        const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `GROQ (${model || 'openai/gpt-oss-120b'})` });
-      }
+          };
+          if (prov.id === 'openrouter') {
+            headers['HTTP-Referer'] = 'https://sahayak.app';
+            headers['X-Title'] = 'Sahayak Civic Assistant';
+          }
 
-      if (activeProvider === 'nvidia') {
-        const resp = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: model || 'meta/llama-3.3-70b-instruct',
-            messages: formattedMessages,
-            temperature: 0.3,
-            max_tokens: 1200
-          })
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.error?.message || `HTTP ${resp.status}`);
-        }
-        const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `NVIDIA (${model || 'meta/llama-3.3-70b-instruct'})` });
-      }
+          const resp = await fetch(prov.endpoint, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+              model: mId,
+              messages: formattedMessages,
+              temperature: 0.3,
+              max_tokens: 1200
+            })
+          });
 
-      if (activeProvider === 'openrouter') {
-        const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`,
-            'HTTP-Referer': 'https://sahayak.app',
-            'X-Title': 'Sahayak Civic Assistant'
-          },
-          body: JSON.stringify({
-            model: model || 'openrouter/free',
-            messages: formattedMessages,
-            temperature: 0.3,
-            max_tokens: 1200
-          })
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.error?.message || `HTTP ${resp.status}`);
-        }
-        const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `OpenRouter (${model || 'openrouter/free'})` });
-      }
+          if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            console.warn(`[Failover] ${prov.id} model ${mId} failed:`, err.error?.message || resp.status);
+            continue;
+          }
 
-      if (activeProvider === 'gemini') {
-        const cleanModel = model || 'gemini-2.0-flash';
-        const contents = (messages || []).map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        }));
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${key}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: contents,
-            generationConfig: { maxOutputTokens: 1200, temperature: 0.3 }
-          })
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.error?.message || `HTTP ${resp.status}`);
+          const data = await resp.json();
+          const replyText = data.choices?.[0]?.message?.content || data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (replyText) {
+            return res.status(200).json({
+              text: replyText,
+              provider: `${prov.id.toUpperCase()} (${mId})`
+            });
+          }
+        } catch (e) {
+          console.warn(`[Failover] Network error on ${prov.id} (${mId}):`, e.message);
         }
-        const data = await resp.json();
-        return res.status(200).json({ text: data.candidates?.[0]?.content?.parts?.[0]?.text || '', provider: `Gemini (${cleanModel})` });
-      }
-
-      if (activeProvider === 'openai' || activeProvider === 'grok' || activeProvider === 'deepseek') {
-        const endpoints = {
-          openai: 'https://api.openai.com/v1/chat/completions',
-          grok: 'https://api.x.ai/v1/chat/completions',
-          deepseek: 'https://api.deepseek.com/v1/chat/completions'
-        };
-        const resp = await fetch(endpoints[activeProvider], {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: model || 'gpt-4o-mini',
-            messages: formattedMessages,
-            temperature: 0.3,
-            max_tokens: 1200
-          })
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.error?.message || `HTTP ${resp.status}`);
-        }
-        const data = await resp.json();
-        return res.status(200).json({ text: data.choices[0]?.message?.content || '', provider: `${activeProvider.toUpperCase()} (${model || 'default'})` });
-      }
-
-      if (activeProvider === 'claude') {
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: model || 'claude-3-7-sonnet-20250219',
-            system: systemPrompt,
-            messages: messages || [],
-            max_tokens: 1200
-          })
-        });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.error?.message || `HTTP ${resp.status}`);
-        }
-        const data = await resp.json();
-        return res.status(200).json({ text: data.content?.[0]?.text || '', provider: `Claude (${model || 'claude-3-7-sonnet'})` });
-      }
-    } catch (err) {
-      console.warn(`[Failover] Key ${i + 1}/${keys.length} for ${activeProvider} failed:`, err.message);
-      if (i === keys.length - 1) {
-        return res.status(200).json({
-          text: `### 🏛️ Sahayak Civic Assistant\n\n⏳ **Temporary High Traffic / Rate Limit**\n\nThe free AI provider is currently processing high traffic volume (${err.message}).\n\n👉 Please wait 10–15 seconds and try asking again!`,
-          provider: 'Rate Limit Notice'
-        });
       }
     }
   }
+
+  // If all providers and keys fail
+  return res.status(200).json({
+    text: `### 🏛️ Sahayak Civic Assistant\n\n⏳ **Temporary High Traffic**\n\nThe civic AI engine is processing high traffic volume across all free provider endpoints. Please wait 5–10 seconds and try asking again!`,
+    provider: 'High Traffic Notice'
+  });
 }
