@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     {
       id: 'openrouter',
       endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-      models: ['openrouter/free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3.5-lightning:free'],
+      models: ['google/gemma-2-9b-it:free', 'meta-llama/llama-3.1-8b-instruct:free', 'mistralai/mistral-7b-instruct:free'],
       keys: (envKeyMap.openrouter || '').split(/[\n,]+/).map(k => k.trim()).filter(Boolean)
     },
     {
@@ -116,18 +116,10 @@ export default async function handler(req, res) {
     }
   ];
 
-  // Dynamic Round-Robin & Provider Prioritization
-  let orderedPools = [...providerPools];
-  if (provider && provider !== 'auto') {
-    const requested = providerPools.find(p => p.id === provider);
-    if (requested) {
-      orderedPools = [requested, ...providerPools.filter(p => p.id !== provider)];
-    }
-  } else {
-    // Distribute turns evenly across Groq, OpenRouter, and NVIDIA
-    const offset = (global.REQUEST_COUNTER = (global.REQUEST_COUNTER || 0) + 1) % providerPools.length;
-    orderedPools = [...providerPools.slice(offset), ...providerPools.slice(0, offset)];
-  }
+  // Prioritize Groq (fastest 120B reasoning) first, then fallback to OpenRouter and NVIDIA
+  const orderedPools = provider && provider !== 'auto'
+    ? [providerPools.find(p => p.id === provider) || providerPools[0], ...providerPools.filter(p => p.id !== provider)]
+    : providerPools;
 
   // Try providers in priority order
   for (const prov of orderedPools) {
@@ -164,7 +156,9 @@ export default async function handler(req, res) {
 
           const data = await resp.json();
           const replyText = data.choices?.[0]?.message?.content || data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (replyText) {
+          
+          // Ensure the reply is a real answer and not a safety classifier stub
+          if (replyText && replyText.trim().length > 25 && !replyText.startsWith('User Safety:')) {
             return res.status(200).json({
               text: replyText,
               provider: `${prov.id.toUpperCase()} (${mId})`
