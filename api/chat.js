@@ -8,11 +8,15 @@ export default async function handler(req, res) {
 
   const { provider, model, systemPrompt, messages, userKey } = req.body;
 
-  // Retrieve environment keys (supports all naming aliases and comma-separated multiple keys)
+  const DEFAULT_SERVER_GROQ = "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,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,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,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";
+  const DEFAULT_SERVER_NVIDIA = "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";
+  const DEFAULT_SERVER_OPENROUTER = "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,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";
+
+  // Retrieve environment keys (supports environment variables or server defaults)
   const envKeyMap = {
-    groq: process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || process.env.GROQ_KEYS || process.env.GROQ_KEY || userKey,
-    nvidia: process.env.NVIDIA_API_KEYS || process.env.NVIDIA_API_KEY || process.env.NVIDIA_KEYS || process.env.NVIDIA_KEY || userKey,
-    openrouter: process.env.OPENROUTER_API_KEYS || process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEYS || process.env.OPENROUTER_KEY || userKey,
+    groq: process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || process.env.GROQ_KEYS || process.env.GROQ_KEY || userKey || DEFAULT_SERVER_GROQ,
+    nvidia: process.env.NVIDIA_API_KEYS || process.env.NVIDIA_API_KEY || process.env.NVIDIA_KEYS || process.env.NVIDIA_KEY || userKey || DEFAULT_SERVER_NVIDIA,
+    openrouter: process.env.OPENROUTER_API_KEYS || process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEYS || process.env.OPENROUTER_KEY || userKey || DEFAULT_SERVER_OPENROUTER,
     gemini: process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || process.env.GEMINI_KEYS || process.env.GEMINI_KEY || userKey,
     openai: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEYS || userKey,
     claude: process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY || userKey,

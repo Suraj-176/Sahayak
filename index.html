@@ -25,8 +25,6 @@
     })();
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-  <!-- Free Tokens Configuration File -->
-  <script src="config.js"></script>
 
   <style>
     :root{
@@ -1213,85 +1211,30 @@ function App(){
     const systemPrompt = getSystemPrompt(agentType, effectiveState, selectedLang);
     const stateObj = STATES_DIRECTORY.find(s => s.code === effectiveState) || STATES_DIRECTORY[0];
 
-    const cfg = window.SAHAYAK_CONFIG || {};
-    const groqModels = cfg.GROQ_MODELS || ["openai/gpt-oss-120b", "groq/compound", "qwen/qwen3.6-27b", "groq/compound-mini", "openai/gpt-oss-20b"];
-    const nvidiaModels = cfg.NVIDIA_MODELS || ["meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct", "meta/llama-3.1-8b-instruct", "mistralai/mistral-large-2-instruct"];
-    const orModels = cfg.OPENROUTER_MODELS || ["openrouter/free", "nvidia/nemotron-3.5-lightning:free", "google/gemma-4-31b-it:free"];
-    const geminiModels = cfg.GEMINI_MODELS || ["gemini-2.0-flash", "gemini-1.5-flash"];
-
-    const providerKeyMap = {
-      groq: { keys: (cfg.GROQ_KEYS || []).filter(Boolean), models: groqModels },
-      nvidia: { keys: (cfg.NVIDIA_KEYS || []).filter(Boolean), models: nvidiaModels },
-      openrouter: { keys: (cfg.OPENROUTER_KEYS || []).filter(Boolean), models: orModels },
-      gemini: { keys: (cfg.GEMINI_KEYS || []).filter(Boolean), models: geminiModels },
-      openai: { keys: (cfg.OPENAI_KEYS || []).filter(Boolean), models: ['gpt-4o-mini'] },
-      claude: { keys: (cfg.CLAUDE_KEYS || []).filter(Boolean), models: ['claude-3-7-sonnet-20250219'] },
-      grok: { keys: (cfg.GROK_KEYS || []).filter(Boolean), models: ['grok-2-latest'] },
-      deepseek: { keys: (cfg.DEEPSEEK_KEYS || []).filter(Boolean), models: ['deepseek-chat'] }
-    };
-
-    const order = cfg.PROVIDER_ORDER || ['groq', 'nvidia', 'openrouter', 'gemini', 'openai', 'claude', 'grok', 'deepseek'];
-    // 1. Check for secure Serverless Proxy (/api/chat) with auto-pass of config.js keys & env variables
-    if(window.location.protocol && window.location.protocol.startsWith('http')){
-      for(const prov of ['groq', 'nvidia', 'openrouter', 'gemini']){
-        try {
-          const sResp = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              provider: prov,
-              model: providerKeyMap[prov]?.models?.[0],
-              systemPrompt: systemPrompt,
-              messages: newHistory,
-              userKey: (providerKeyMap[prov]?.keys || []).join(',')
-            })
-          });
-          const sData = await sResp.json().catch(()=>({}));
-          if(sData && sData.text && !sData.text.includes('API Key Configuration Needed')){
-            const cleanedText = cleanThinkingTags(sData.text);
-            const citations = extractCitations(cleanedText, stateObj);
-            return { text: cleanedText, citations };
-          }
-        } catch(e){}
-      }
-    }
-
-    // 2. Direct client-side failover using config.js
-    if(availableProviders.length === 0){
-      return {
-        text: `### 🏛️ Sahayak Civic Assistant
-Welcome! To activate the AI response engine, please configure your free API keys in the \`config.js\` file or in Vercel Environment Variables.`,
-        citations: []
-      };
-    }
-
-    // Try providers in priority order with model and key fallbacks
-    for(const prov of availableProviders){
-      const { keys, models } = providerKeyMap[prov];
-      for(let keyIdx = 0; keyIdx < keys.length; keyIdx++){
-        const key = keys[keyIdx];
-        for(let modelIdx = 0; modelIdx < models.length; modelIdx++){
-          const model = models[modelIdx];
-          try {
-            const responseText = await callProviderAPI(prov, key, model, systemPrompt, newHistory);
-            const cleanedText = cleanThinkingTags(responseText);
-
-            setHistories(prev => ({
-              ...prev,
-              [agentType]: [...newHistory, { role:'assistant', content: cleanedText }]
-            }));
-
-            const citations = extractCitations(cleanedText, stateObj);
-            return { text: cleanedText, citations };
-          } catch(err) {
-            console.warn(`[Failover] ${prov} (Model: ${model}, Key: ${keyIdx + 1}) failed: ${err.message}. Rotating...`);
-          }
+    // Call secure Serverless Backend (/api/chat)
+    const provList = ['groq', 'nvidia', 'openrouter', 'gemini'];
+    for(const prov of provList){
+      try {
+        const sResp = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: prov,
+            systemPrompt: systemPrompt,
+            messages: newHistory
+          })
+        });
+        const sData = await sResp.json().catch(()=>({}));
+        if(sData && sData.text){
+          const cleanedText = cleanThinkingTags(sData.text);
+          const citations = extractCitations(cleanedText, stateObj);
+          return { text: cleanedText, citations };
         }
-      }
+      } catch(e){}
     }
 
     return {
-      text: "The civic assistance engine is currently experiencing high network volume across all providers. Please try again in a moment.",
+      text: "The civic assistance engine is currently experiencing high network volume. Please try again in a moment.",
       citations: []
     };
   }
