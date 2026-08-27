@@ -38,6 +38,36 @@ export default async function handler(req, res) {
 
   const keys = activeKeyRaw.split(/[\n,]+/).map(k => k.trim()).filter(Boolean);
 
+  // Capture User IP, Geolocation, and Device Details
+  const rawIp = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket?.remoteAddress || 'Unknown';
+  const clientIp = typeof rawIp === 'string' ? rawIp.split(',')[0].trim() : rawIp;
+  const city = req.headers['x-vercel-ip-city'] ? decodeURIComponent(req.headers['x-vercel-ip-city']) : 'Unknown';
+  const region = req.headers['x-vercel-ip-country-region'] || 'Unknown';
+  const country = req.headers['x-vercel-ip-country'] || 'IN';
+  const latitude = req.headers['x-vercel-ip-latitude'] || null;
+  const longitude = req.headers['x-vercel-ip-longitude'] || null;
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  const timestamp = new Date().toISOString();
+
+  const userQuery = (messages && messages.length > 0) 
+    ? messages[messages.length - 1]?.content 
+    : '';
+
+  // Log user activity to Vercel Serverless Logs
+  console.log('[USER_ACTIVITY]', JSON.stringify({
+    timestamp,
+    ip: clientIp,
+    location: {
+      city,
+      region,
+      country,
+      coordinates: latitude && longitude ? `${latitude}, ${longitude}` : undefined
+    },
+    device: userAgent,
+    query: userQuery,
+    provider: activeProvider
+  }));
+
   const formattedMessages = [
     { role: 'system', content: systemPrompt },
     ...(messages || [])
