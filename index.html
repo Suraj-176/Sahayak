@@ -1813,17 +1813,6 @@ function App(){
               </select>
             </div>
 
-            {/* AI Engine Provider Selector */}
-            <div className="select-dropdown" title="Select AI Engine (Auto Balanced / Groq / OpenRouter / NVIDIA)">
-              <Icon.sparkle s={13}/>
-              <select value={selectedProvider} onChange={e=>setSelectedProvider(e.target.value)}>
-                <option value="auto">⚡ Auto (Balanced)</option>
-                <option value="groq">🚀 Groq (120B)</option>
-                <option value="openrouter">🌐 OpenRouter (Free)</option>
-                <option value="nvidia">🟢 NVIDIA NIM</option>
-              </select>
-            </div>
-
             {/* Voice Type Selector */}
             {speechSupported && (
               <div className="select-dropdown" title="Select Read Aloud Voice (Female / Male / System)">
