@@ -1137,6 +1137,7 @@ function App(){
   const [speakingIndex, setSpeakingIndex] = useState(null);
   const [voices, setVoices] = useState([]);
   const [selectedVoiceGender, setSelectedVoiceGender] = useState('female'); // 'female' | 'male' | 'auto'
+  const [selectedProvider, setSelectedProvider] = useState('auto'); // 'auto' | 'groq' | 'openrouter' | 'nvidia'
 
   const logRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -1216,7 +1217,8 @@ function App(){
 
     // 1. If hosted on Vercel / Web server, use secure /api/chat
     if (window.location.protocol && window.location.protocol.startsWith('http')) {
-      for (const prov of ['groq', 'openrouter', 'nvidia']) {
+      const activeOrder = selectedProvider === 'auto' ? ['auto', 'groq', 'openrouter', 'nvidia'] : [selectedProvider, 'groq', 'openrouter', 'nvidia'];
+      for (const prov of activeOrder) {
         try {
           const sResp = await fetch('/api/chat', {
             method: 'POST',
@@ -1808,6 +1810,17 @@ function App(){
                 {LANGUAGES.map(l => (
                   <option key={l.code} value={l.code}>{l.native} ({l.label})</option>
                 ))}
+              </select>
+            </div>
+
+            {/* AI Engine Provider Selector */}
+            <div className="select-dropdown" title="Select AI Engine (Auto Balanced / Groq / OpenRouter / NVIDIA)">
+              <Icon.sparkle s={13}/>
+              <select value={selectedProvider} onChange={e=>setSelectedProvider(e.target.value)}>
+                <option value="auto">⚡ Auto (Balanced)</option>
+                <option value="groq">🚀 Groq (120B)</option>
+                <option value="openrouter">🌐 OpenRouter (Free)</option>
+                <option value="nvidia">🟢 NVIDIA NIM</option>
               </select>
             </div>
 

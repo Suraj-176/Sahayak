@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     {
       id: 'openrouter',
       endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-      models: ['openrouter/free', 'nvidia/nemotron-3.5-lightning:free', 'google/gemma-4-31b-it:free'],
+      models: ['openrouter/free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3.5-lightning:free'],
       keys: (envKeyMap.openrouter || '').split(/[\n,]+/).map(k => k.trim()).filter(Boolean)
     },
     {
@@ -116,8 +116,21 @@ export default async function handler(req, res) {
     }
   ];
 
+  // Dynamic Round-Robin & Provider Prioritization
+  let orderedPools = [...providerPools];
+  if (provider && provider !== 'auto') {
+    const requested = providerPools.find(p => p.id === provider);
+    if (requested) {
+      orderedPools = [requested, ...providerPools.filter(p => p.id !== provider)];
+    }
+  } else {
+    // Distribute turns evenly across Groq, OpenRouter, and NVIDIA
+    const offset = (global.REQUEST_COUNTER = (global.REQUEST_COUNTER || 0) + 1) % providerPools.length;
+    orderedPools = [...providerPools.slice(offset), ...providerPools.slice(0, offset)];
+  }
+
   // Try providers in priority order
-  for (const prov of providerPools) {
+  for (const prov of orderedPools) {
     if (!prov.keys || prov.keys.length === 0) continue;
 
     for (const key of prov.keys) {
