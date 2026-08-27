@@ -33,7 +33,10 @@ export default async function handler(req, res) {
   }
 
   if (!activeKeyRaw) {
-    return res.status(400).json({ error: `No API keys found in Vercel Environment Variables. Please add GROQ_API_KEYS or NVIDIA_API_KEYS in Vercel Settings -> Environment Variables.` });
+    return res.status(200).json({
+      text: `### 🏛️ Sahayak Civic Assistant\n\n⚠️ **API Key Configuration Needed**\n\nThe serverless AI engine requires at least one free API key to answer citizen queries.\n\n👉 **How to activate (1 minute):**\n1. Open your **Vercel Project Settings → Environment Variables**.\n2. Add **\`GROQ_API_KEYS\`** (paste your free key from console.groq.com).\n3. Go to **Deployments** tab, click **\`...\`** on latest build, and click **Redeploy**!`,
+      provider: 'System Setup'
+    });
   }
 
   const keys = activeKeyRaw.split(/[\n,]+/).map(k => k.trim()).filter(Boolean);
@@ -233,7 +236,10 @@ export default async function handler(req, res) {
     } catch (err) {
       console.warn(`[Failover] Key ${i + 1}/${keys.length} for ${activeProvider} failed:`, err.message);
       if (i === keys.length - 1) {
-        return res.status(500).json({ error: `All keys for ${activeProvider} failed: ${err.message}` });
+        return res.status(200).json({
+          text: `### 🏛️ Sahayak Civic Assistant\n\n⏳ **Temporary High Traffic / Rate Limit**\n\nThe free AI provider is currently processing high traffic volume (${err.message}).\n\n👉 Please wait 10–15 seconds and try asking again!`,
+          provider: 'Rate Limit Notice'
+        });
       }
     }
   }

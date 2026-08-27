@@ -1245,13 +1245,17 @@ function App(){
               messages: newHistory
             })
           });
-          if(sResp.ok){
-            const sData = await sResp.json();
-            if(sData.text){
-              const cleanedText = cleanThinkingTags(sData.text);
-              const citations = extractCitations(cleanedText, stateObj);
-              return { text: cleanedText, citations };
-            }
+          const sData = await sResp.json().catch(()=>({}));
+          if(sData && sData.text){
+            const cleanedText = cleanThinkingTags(sData.text);
+            const citations = extractCitations(cleanedText, stateObj);
+            return { text: cleanedText, citations };
+          }
+          if(sData && sData.error && sData.error.includes('API key')){
+            return {
+              text: `### 🏛️ Sahayak Civic Assistant\n\n⚠️ **API Key Configuration Needed**\n\nPlease add your free \`GROQ_API_KEYS\` or \`NVIDIA_API_KEYS\` in **Vercel Settings → Environment Variables**, then click **Redeploy**!`,
+              citations: []
+            };
           }
         } catch(e){}
       }
